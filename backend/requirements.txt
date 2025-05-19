@@ -2,3 +2,7 @@ Flask
 flask_sqlalchemy
 python-dotenv
 pymysql
+werkzeug
+PyJWT
+cryptography
+flasgger==0.9.7.1

@@ -15,7 +15,7 @@ services:
     build:
       context: ./backend
     ports:
-      -  "5001:5000" 
+      -  "5001:5000"
     volumes:
       - ./backend:/app
       - ./model:/app/model
@@ -23,6 +23,7 @@ services:
       - .env
     depends_on:
       - db
+    command: flask run --host=0.0.0.0 --port=5000 --reload # TODO: REMOVE --reload FOR PRODUCTION!!!
 
   db:
     image: mysql:8.0
