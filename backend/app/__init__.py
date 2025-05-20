@@ -1,6 +1,6 @@
 from flask import Flask
 from app.extensions import db
-from app.routes import auth
+from app.routes import auth, patient_routes
 import os
 import time
 from sqlalchemy.exc import OperationalError
@@ -14,6 +14,7 @@ def create_app():
     db.init_app(app)
 
     app.register_blueprint(auth.bp)
+    app.register_blueprint(patient_routes.bp)
 
     Swagger(app)
 
