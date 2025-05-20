@@ -4,6 +4,8 @@ WORKDIR /app
 
 COPY . /app
 
+ENV PYTHONPATH=/app
+
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 
