@@ -9,6 +9,7 @@ import HelloWorld from './components/HelloWorld.vue'
 
     <div class="wrapper">
       <HelloWorld msg="You did it!" />
+       <q-btn label="Click me!" color="primary" />
 
       <nav>
         <RouterLink to="/">Home</RouterLink>
