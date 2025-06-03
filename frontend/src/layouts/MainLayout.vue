@@ -1,13 +1,3 @@
-<script setup>
-import { RouterView } from 'vue-router'
-import { Dark, useQuasar } from 'quasar'
-
-const $q = useQuasar()
-function toggleDarkMode() {
-  Dark.toggle()
-}
-</script>
-
 <template>
   <q-layout view="lHh Lpr lFf" class="bg-background text-primary">
     <q-header elevated class="bg-primary text-white">
@@ -21,7 +11,7 @@ function toggleDarkMode() {
           flat
           round
           dense
-          label="Toggle Dark Mode"
+          icon="brightness_6"
           @click="toggleDarkMode"
         />
       </q-toolbar>
@@ -33,9 +23,17 @@ function toggleDarkMode() {
   </q-layout>
 </template>
 
-<style>
-html, body, #app {
-  height: 100%;
-  margin: 0;
+<script setup>
+import { Dark } from 'quasar'
+import { computed } from 'vue'
+
+const layoutClass = computed(() =>
+  Dark.isActive ? 'bg-dark text-white' : 'bg-white text-black'
+)
+</script>
+
+<style scoped>
+.q-layout {
+  min-height: 100vh;
 }
 </style>
