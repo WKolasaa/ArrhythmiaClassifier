@@ -48,12 +48,16 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '../stores/auth'
 
 const email = ref('')
 const password = ref('')
 const confirmPassword = ref('')
+const router = useRouter()
+const auth = useAuthStore()
 
-function handleRegister () {
+async function handleRegister() {
   if (!email.value || !password.value || !confirmPassword.value) {
     alert('Please fill out all fields.')
     return
@@ -64,7 +68,13 @@ function handleRegister () {
     return
   }
 
-  console.log('Registering user:', email.value)
-  // TODO: connect to backend
+  const success = await auth.register(email.value, password.value)
+  if (success) {
+    alert('Registration successful! Please log in.')
+    router.push('/login')
+  } else {
+    alert('Registration failed.')
+  }
 }
 </script>
+

@@ -1,10 +1,19 @@
 <script setup>
 import { RouterView } from 'vue-router'
 import { Dark, useQuasar } from 'quasar'
+import { useAuthStore } from './stores/auth'
+import { computed } from 'vue'
 
 const $q = useQuasar()
-function toggleDarkMode() {
+function toggleDarkMode () {
   Dark.toggle()
+}
+
+const auth = useAuthStore()
+const isLoggedIn = computed(() => !!auth.user)
+
+function handleLogout () {
+  auth.logout()
 }
 </script>
 
@@ -15,8 +24,11 @@ function toggleDarkMode() {
         <q-toolbar-title>Arrhythmia App</q-toolbar-title>
         <q-space />
         <q-btn flat label="Home" to="/" />
-        <q-btn flat label="Login" to="/login" />
-        <q-btn flat label="Register" to="/register" />
+
+        <q-btn v-if="!isLoggedIn" flat label="Login" to="/login" />
+        <q-btn v-if="!isLoggedIn" flat label="Register" to="/register" />
+        <q-btn v-else flat label="Logout" @click="handleLogout" />
+
         <q-btn
           flat
           round
