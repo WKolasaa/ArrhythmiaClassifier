@@ -6,6 +6,8 @@ import time
 from sqlalchemy.exc import OperationalError
 from flasgger import Swagger
 
+
+
 def create_app():
     app = Flask(__name__)
     app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("DATABASE_URL")
@@ -15,6 +17,7 @@ def create_app():
 
     app.register_blueprint(auth.bp)
     app.register_blueprint(patient_routes.bp)
+
 
     Swagger(app)
 
