@@ -6,3 +6,5 @@ werkzeug
 PyJWT
 cryptography
 flasgger==0.9.7.1
+faker
+
