@@ -5,6 +5,7 @@ import os
 import time
 from sqlalchemy.exc import OperationalError
 from flasgger import Swagger
+from flask_cors import CORS
 
 
 
@@ -14,6 +15,8 @@ def create_app():
     app.config['SECRET_KEY'] = os.getenv("SECRET_KEY")
 
     db.init_app(app)
+
+    CORS(app, origins=["http://localhost:5173"])
 
     app.register_blueprint(auth.bp)
     app.register_blueprint(patient_routes.bp)

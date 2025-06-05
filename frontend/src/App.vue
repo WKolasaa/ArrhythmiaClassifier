@@ -1,85 +1,53 @@
 <script setup>
-import { RouterLink, RouterView } from 'vue-router'
-import HelloWorld from './components/HelloWorld.vue'
+import { RouterView } from 'vue-router'
+import { Dark, useQuasar } from 'quasar'
+import { useAuthStore } from './stores/auth'
+import { computed } from 'vue'
+
+const $q = useQuasar()
+function toggleDarkMode () {
+  Dark.toggle()
+}
+
+const auth = useAuthStore()
+const isLoggedIn = computed(() => !!auth.user)
+
+function handleLogout () {
+  auth.logout()
+}
 </script>
 
 <template>
-  <header>
-    <img alt="Vue logo" class="logo" src="@/assets/logo.svg" width="125" height="125" />
+  <q-layout view="lHh Lpr lFf" class="bg-background text-primary">
+    <q-header elevated class="bg-primary text-white">
+      <q-toolbar>
+        <q-toolbar-title>Arrhythmia App</q-toolbar-title>
+        <q-space />
+        <q-btn flat label="Home" to="/" />
 
-    <div class="wrapper">
-      <HelloWorld msg="You did it!" />
+        <q-btn v-if="!isLoggedIn" flat label="Login" to="/login" />
+        <q-btn v-if="!isLoggedIn" flat label="Register" to="/register" />
+        <q-btn v-else flat label="Logout" @click="handleLogout" />
 
-      <nav>
-        <RouterLink to="/">Home</RouterLink>
-        <RouterLink to="/about">About</RouterLink>
-      </nav>
-    </div>
-  </header>
+        <q-btn
+          flat
+          round
+          dense
+          label="Toggle Dark Mode"
+          @click="toggleDarkMode"
+        />
+      </q-toolbar>
+    </q-header>
 
-  <RouterView />
+    <q-page-container>
+      <RouterView />
+    </q-page-container>
+  </q-layout>
 </template>
 
-<style scoped>
-header {
-  line-height: 1.5;
-  max-height: 100vh;
-}
-
-.logo {
-  display: block;
-  margin: 0 auto 2rem;
-}
-
-nav {
-  width: 100%;
-  font-size: 12px;
-  text-align: center;
-  margin-top: 2rem;
-}
-
-nav a.router-link-exact-active {
-  color: var(--color-text);
-}
-
-nav a.router-link-exact-active:hover {
-  background-color: transparent;
-}
-
-nav a {
-  display: inline-block;
-  padding: 0 1rem;
-  border-left: 1px solid var(--color-border);
-}
-
-nav a:first-of-type {
-  border: 0;
-}
-
-@media (min-width: 1024px) {
-  header {
-    display: flex;
-    place-items: center;
-    padding-right: calc(var(--section-gap) / 2);
-  }
-
-  .logo {
-    margin: 0 2rem 0 0;
-  }
-
-  header .wrapper {
-    display: flex;
-    place-items: flex-start;
-    flex-wrap: wrap;
-  }
-
-  nav {
-    text-align: left;
-    margin-left: -1rem;
-    font-size: 1rem;
-
-    padding: 1rem 0;
-    margin-top: 1rem;
-  }
+<style>
+html, body, #app {
+  height: 100%;
+  margin: 0;
 }
 </style>

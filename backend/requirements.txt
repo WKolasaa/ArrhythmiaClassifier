@@ -10,3 +10,4 @@ faker
 scikit-learn
 pandas
 tensorflow
+flask-cors
