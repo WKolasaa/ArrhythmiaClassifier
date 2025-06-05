@@ -1,4 +1,5 @@
 import { defineStore } from "pinia";
+import axios from "../plugins/axios";
 
 export const usePatientStore = defineStore("PatientStore", {
   state: () => ({
@@ -17,7 +18,7 @@ export const usePatientStore = defineStore("PatientStore", {
       }
     },
 
-    async fetchPatientDetails(pacientId) {
+    async fetchPatientDetails(patientId) {
       try {
         const res = await axios.get(`/patients/${patientId}`);
         this.selectedPatient = res.data;
