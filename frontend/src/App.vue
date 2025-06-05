@@ -10,11 +10,11 @@ const auth = useAuthStore()
 
 const isLoggedIn = computed(() => !!auth.user)
 
-function toggleDarkMode () {
+function toggleDarkMode() {
   Dark.toggle()
 }
 
-function handleLogout () {
+function handleLogout() {
   auth.logout()
   router.push('/')
 }
@@ -28,20 +28,14 @@ function handleLogout () {
         <q-space />
 
         <!-- Navigation Buttons -->
-        <q-btn flat label="Dashboard" to="/dashboard" />
+        <q-btn v-if="isLoggedIn" flat label="Dashboard" to="/dashboard" />
         <q-btn v-if="!isLoggedIn" flat label="Home" to="/" />
         <q-btn v-if="!isLoggedIn" flat label="Login" to="/login" />
         <q-btn v-if="!isLoggedIn" flat label="Register" to="/register" />
         <q-btn v-else flat label="Logout" @click="handleLogout" />
 
         <!-- Theme Toggle -->
-        <q-btn
-          flat
-          round
-          dense
-          label="Toggle Dark Mode"
-          @click="toggleDarkMode"
-        />
+        <q-btn flat round dense :icon="$q.dark.isActive ? 'light_mode' : 'dark_mode'" @click="toggleDarkMode" />
       </q-toolbar>
     </q-header>
 
@@ -52,7 +46,9 @@ function handleLogout () {
 </template>
 
 <style>
-html, body, #app {
+html,
+body,
+#app {
   height: 100%;
   margin: 0;
 }
