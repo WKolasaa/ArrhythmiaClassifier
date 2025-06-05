@@ -41,17 +41,20 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '../stores/auth'
 
 const email = ref('')
 const password = ref('')
+const router = useRouter()
+const auth = useAuthStore()
 
-function handleLogin () {
-  if (!email.value || !password.value) {
-    alert('Please fill in both fields.')
-    return
+async function handleLogin() {
+  const success = await auth.login(email.value, password.value)
+  if (success) {
+    router.push('/dashboard') // redirect after login
+  } else {
+    alert('Login failed')
   }
-
-  console.log('Logging in with:', email.value)
-  // TODO: hook into backend or auth flow
 }
 </script>
