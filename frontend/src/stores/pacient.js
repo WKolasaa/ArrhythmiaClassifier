@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 
-export const usePacientStore = defineStore("PatientStore", {
+export const usePatientStore = defineStore("PatientStore", {
   state: () => ({
     all: [],
     selectedPatient: null,

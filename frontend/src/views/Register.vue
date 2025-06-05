@@ -1,6 +1,6 @@
 <template>
   <div class="q-pa-md flex flex-center">
-    <q-card class="q-pa-lg shadow-2" style="max-width: 400px; width: 100%;">
+    <q-card class="q-pa-lg shadow-2" style="max-width: 400px; width: 100%">
       <q-card-section class="text-h6 text-center text-primary">
         Register
       </q-card-section>
@@ -47,34 +47,38 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { useAuthStore } from '../stores/auth'
+import { ref } from "vue";
+import { useRouter } from "vue-router";
+import { useAuthStore } from "../stores/auth";
+import { errorMessages } from "vue/compiler-sfc";
 
-const email = ref('')
-const password = ref('')
-const confirmPassword = ref('')
-const router = useRouter()
-const auth = useAuthStore()
+const email = ref("");
+const password = ref("");
+const confirmPassword = ref("");
+const router = useRouter();
+const auth = useAuthStore();
 
 async function handleRegister() {
-  if (!email.value || !password.value || !confirmPassword.value) {
-    alert('Please fill out all fields.')
-    return
-  }
+  try {
+    if (!email.value || !password.value || !confirmPassword.value) {
+      alert("Please fill out all fields.");
+      return;
+    }
 
-  if (password.value !== confirmPassword.value) {
-    alert('Passwords do not match.')
-    return
-  }
+    if (password.value !== confirmPassword.value) {
+      alert("Passwords do not match.");
+      return;
+    }
 
-  const success = await auth.register(email.value, password.value)
-  if (success) {
-    alert('Registration successful! Please log in.')
-    router.push('/login')
-  } else {
-    alert('Registration failed.')
-  }
+    const success = await auth.register(email.value, password.value);
+    if (success) {
+      alert("Registration successful! Please log in.");
+      router.push("/login");
+    } else {
+      alert("Registration failed.");
+    }
+  } catch (error) {
+    console.error(error);
+  };
 }
 </script>
-
