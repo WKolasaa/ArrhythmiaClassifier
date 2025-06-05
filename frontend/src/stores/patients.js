@@ -1,5 +1,5 @@
-import { defineStore } from "pinia"
-import axios from "../plugins/axios"
+import { defineStore } from "pinia";
+import axios from "../plugins/axios";
 
 export const usePatientStore = defineStore("PatientStore", {
   state: () => ({
@@ -13,32 +13,32 @@ export const usePatientStore = defineStore("PatientStore", {
   actions: {
     async fetchAllPatients() {
       try {
-        const res = await axios.get("/patients")
-        this.all = res.data
+        const res = await axios.get("/patients");
+        this.all = res.data;
       } catch (err) {
-        this.error = err
-        console.error("Failed to fetch all patients:", err)
+        this.error = err;
+        console.error("Failed to fetch all patients:", err);
       }
     },
 
     async fetchPatientDetails(patientId) {
       try {
-        const res = await axios.get(`/patients/${patientId}`)
-        this.selectedPatient = res.data
+        const res = await axios.get(`/patients/${patientId}`);
+        this.selectedPatient = res.data;
       } catch (err) {
-        this.error = err
-        console.error("Failed to fetch the selected patient:", err)
+        this.error = err;
+        console.error("Failed to fetch the selected patient:", err);
       }
     },
 
     async createPatient(patientData) {
       try {
-        const res = await axios.post("/patients", patientData)
-        return res.data
+        const res = await axios.post("/patients", patientData);
+        return res.data;
       } catch (err) {
-        this.error = err
-        console.error("Failed to create patient:", err)
-        throw err
+        this.error = err;
+        console.error("Failed to create patient:", err);
+        throw err;
       }
     },
 
@@ -61,5 +61,18 @@ export const usePatientStore = defineStore("PatientStore", {
         console.error("Failed to fetch status:", err);
       }
     },
+
+    async fetchHeartbeatById(patientId, heartbeatId) {
+      try {
+        const res = await axios.get(
+          `/patients/${patientId}/heartbeats/${heartbeatId}`
+        );
+        return res.data;
+      } catch (err) {
+        this.error = err;
+        console.error("Failed to fetch specific heartbeat:", err);
+        throw err;
+      }
+    },
   },
-})
+});
