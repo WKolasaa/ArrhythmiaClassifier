@@ -28,6 +28,7 @@ function handleLogout() {
         <q-space />
 
         <!-- Navigation Buttons -->
+        <q-btn v-if="isLoggedIn" flat label="Admin" to="/adminoverview" />
         <q-btn v-if="isLoggedIn" flat label="Dashboard" to="/dashboard" />
         <q-btn v-if="!isLoggedIn" flat label="Home" to="/" />
         <q-btn v-if="!isLoggedIn" flat label="Login" to="/login" />
