@@ -5,6 +5,8 @@ export const usePatientStore = defineStore("PatientStore", {
   state: () => ({
     all: [],
     selectedPatient: null,
+    heartbeats: [],
+    status: null,
     error: null,
   }),
 
@@ -26,6 +28,26 @@ export const usePatientStore = defineStore("PatientStore", {
       } catch (err) {
         this.error = err
         console.error("Failed to fetch the selected patient:", err)
+      }
+    },
+
+    async fetchPatientHeartbeats(patientId) {
+      try {
+        const res = await axios.get(`/patients/${patientId}/heartbeats`);
+        this.heartbeats = res.data;
+      } catch (err) {
+        this.error = err;
+        console.error("Failed to fetch heartbeats:", err);
+      }
+    },
+
+    async fetchPatientStatus(patientId) {
+      try {
+        const res = await axios.get(`/patients/${patientId}/status`);
+        this.status = res.data;
+      } catch (err) {
+        this.error = err;
+        console.error("Failed to fetch status:", err);
       }
     },
   },
