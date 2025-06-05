@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from app.extensions import db
 from app.models.patient import Patient
 from datetime import datetime
+from app.models.heartbeat import Heartbeat
 
 bp = Blueprint('patients', __name__, url_prefix='/patients')
 
@@ -167,3 +168,95 @@ def get_patient(patient_id):
         'contact_info': patient.contact_info,
         'created_at': patient.created_at.isoformat()
     }), 200
+from app.models.heartbeat import Heartbeat
+
+
+@bp.route('/<int:patient_id>/status', methods=['GET'])
+def get_patient_status(patient_id):
+    """
+        Get arrhythmia status for a specific patient
+        ---
+        tags:
+          - Patients
+        parameters:
+          - name: patient_id
+            in: path
+            type: integer
+            required: true
+        responses:
+          200:
+            description: Patient arrhythmia status
+          404:
+            description: Patient or heartbeats not found
+    """
+    patient = Patient.query.get(patient_id)
+    if not patient:
+        return jsonify({'error': 'Patient not found'}), 404
+
+    heartbeats = Heartbeat.query.filter_by(patient_id=patient_id).all()
+    if not heartbeats:
+        return jsonify({'error': 'No heartbeat data for this patient'}), 404
+
+    abnormal_count = sum(1 for hb in heartbeats if hb.predicted_type == 'Arrhythmic')
+    total = len(heartbeats)
+    status = 'Arrhythmic' if abnormal_count > 0 else 'Normal'
+
+    return jsonify({
+        'patient_id': patient.id,
+        'status': status,
+        'total_heartbeats': total,
+        'abnormal_heartbeats': abnormal_count
+    }), 200
+
+
+@bp.route('/<int:patient_id>/heartbeats', methods=['GET'])
+def get_patient_heartbeats(patient_id):
+    """
+        Get all heartbeats for a patient
+        ---
+        tags:
+          - Heartbeats
+        parameters:
+          - name: patient_id
+            in: path
+            type: integer
+            required: true
+        responses:
+          200:
+            description: List of heartbeats with features and prediction
+          404:
+            description: Patient not found
+    """
+    patient = Patient.query.get(patient_id)
+    if not patient:
+        return jsonify({'error': 'Patient not found'}), 404
+
+    heartbeats = Heartbeat.query.filter_by(patient_id=patient_id).all()
+
+    data = []
+    for hb in heartbeats:
+        data.append({
+            'id': hb.id,
+            'timestamp': hb.timestamp.isoformat(),
+            'pre_RR': hb.pre_RR,
+            'post_RR': hb.post_RR,
+            'p_peak': hb.p_peak,
+            't_peak': hb.t_peak,
+            'r_peak': hb.r_peak,
+            's_peak': hb.s_peak,
+            'q_peak': hb.q_peak,
+            'qrs_interval': hb.qrs_interval,
+            'pq_interval': hb.pq_interval,
+            'qt_interval': hb.qt_interval,
+            'st_interval': hb.st_interval,
+            'qrs_morph0': hb.qrs_morph0,
+            'qrs_morph1': hb.qrs_morph1,
+            'qrs_morph2': hb.qrs_morph2,
+            'qrs_morph3': hb.qrs_morph3,
+            'qrs_morph4': hb.qrs_morph4,
+            'heartbeat_type': hb.heartbeat_type,
+            'predicted_type': hb.predicted_type,
+            'prediction_confidence': hb.prediction_confidence
+        })
+
+    return jsonify(data), 200
