@@ -7,6 +7,8 @@ const LoginView = () => import('../views/Login.vue')
 const RegisterView = () => import('../views/Register.vue')
 const IndividualPatientView = () => import('../views/IndividualPatient.vue')
 const Dashboard = () => import('../views/Dashboard.vue')
+const AdminOverview = () => import('../views/AdminOverview.vue')
+
 
 
 const router = createRouter({
@@ -36,6 +38,11 @@ const router = createRouter({
       path: '/dashboard',
       name: 'dashboard',
       component: Dashboard
+    },
+     {
+      path: '/adminoverview',
+      name: 'adminoverview',
+      component: AdminOverview
     }
   ]
 })
