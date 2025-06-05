@@ -1,5 +1,5 @@
-import { defineStore } from "pinia";
-import axios from "../plugins/axios";
+import { defineStore } from "pinia"
+import axios from "../plugins/axios"
 
 export const usePatientStore = defineStore("PatientStore", {
   state: () => ({
@@ -26,6 +26,17 @@ export const usePatientStore = defineStore("PatientStore", {
       } catch (err) {
         this.error = err
         console.error("Failed to fetch the selected patient:", err)
+      }
+    },
+
+    async createPatient(patientData) {
+      try {
+        const res = await axios.post("/patients", patientData)
+        return res.data
+      } catch (err) {
+        this.error = err
+        console.error("Failed to create patient:", err)
+        throw err
       }
     },
   },

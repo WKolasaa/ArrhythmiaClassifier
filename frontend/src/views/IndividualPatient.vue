@@ -35,7 +35,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { usePatientStore } from "@/stores/pacient";
+import { usePatientStore } from "@/stores/patients";
 
 const route = useRoute();
 const patient = ref(null);
