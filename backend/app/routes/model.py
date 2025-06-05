@@ -11,6 +11,11 @@ from app.models.prediction import Prediction
 from app.models.user import User
 from app.utils.files import allowed_file  
 from app.utils.jwt import verify_token 
+from sklearn.metrics import accuracy_score, confusion_matrix
+
+from app.models.heartbeat import Heartbeat
+from app.models.modelperformance import ModelPerformance
+from app.models.patient import Patient
 
 bp = Blueprint("predict", __name__, url_prefix="/model")
 MODEL_FOLDER = os.path.join(os.getcwd(), "model")  # Should point to backend/model/
@@ -19,150 +24,104 @@ MODEL_FOLDER = os.path.join(os.getcwd(), "model")  # Should point to backend/mod
 @bp.route("/predict", methods=["POST"])
 def predict():
     """
-Make a prediction using a selected model and CSV input
----
-tags:
-  - Model
-consumes:
-  - multipart/form-data
-parameters:
-  - name: Authorization
-    in: header
-    type: string
-    required: true
-    description: Bearer token
-    default: "Bearer <your_token>"
-  - name: model_name
-    in: formData
-    type: string
-    required: true
-    description: Name of the model (without .h5)
-    example: best_model
-  - name: file
-    in: formData
-    type: file
-    required: true
-    description: CSV file containing input features
-responses:
-  200:
-    description: Prediction completed
-    schema:
-      type: object
-      properties:
-        message:
-          type: string
-          example: Prediction successful
-        predictions:
-          type: array
-          items:
-            type: integer
-          example: [0, 1, 0, 2]
-        model_used:
-          type: string
-          example: best_model
-        confusion_matrix:
-          type: array
-          items:
-            type: array
-            items:
-              type: integer
-          example: [[10, 2], [1, 7]]
-        accuracy:
-          type: number
-          example: 0.85
-  400:
-    description: Missing file or model name, or invalid file type
-  401:
-    description: Missing or invalid JWT token
-  404:
-    description: Model file not found
-  500:
-    description: Internal server error during prediction
-"""
-    # 1) Verify JWT token manually
-    auth_header = request.headers.get("Authorization", None)
-    if not auth_header or not auth_header.startswith("Bearer "):
-        return jsonify({"error": "Missing or invalid Authorization header"}), 401
+    Make a prediction using a selected model and ECG input data.
 
-    token = auth_header.split(" ")[1]
-    payload = verify_token(token)
-    if not payload:
-        return jsonify({"error": "Invalid or expired token"}), 401
+    ---
+    tags:
+      - Model
+    consumes:
+      - multipart/form-data
+    parameters:
+      - name: Authorization
+        in: header
+        type: string
+        required: true
+        description: Bearer JWT token (e.g., "Bearer YOUR_TOKEN")
 
-    user_id = payload.get("user_id")
-    if user_id is None:
-        return jsonify({"error": "Invalid token payload"}), 401
+      - name: model_name
+        in: formData
+        type: string
+        required: true
+        description: Name of the model without the .h5 extension
 
-    # 2) Ensure model_name is provided
-    model_name = request.form.get("model_name", None)
-    if not model_name:
-        return jsonify({"error": "Missing model_name in form data"}), 400
+      - name: file
+        in: formData
+        type: file
+        required: true
+        description: >
+          CSV file with ECG features per heartbeat. It must contain:
+          "record" column (used as patient_id),
+          and at least the following 32 columns:
+          0_pre-RR to 1_qrs_morph4 (16 features × 2 timesteps).
+          Optionally include a "type" column for ground truth labels.
 
-    # 3) Ensure file is provided
-    if "file" not in request.files:
-        return jsonify({"error": "No file part"}), 400
-
-    file = request.files["file"]
-    if file.filename == "":
-        return jsonify({"error": "No selected file"}), 400
-
-    if not allowed_file(file.filename, {"csv"}):
-        return jsonify({"error": "Invalid file type; only CSV allowed"}), 400
-
-    # 4) Construct model path
-    model_filename = f"{model_name}.h5"
-    model_path = os.path.join(MODEL_FOLDER, model_filename)
-    if not os.path.exists(model_path):
-        return jsonify({"error": f"Model '{model_name}' not found"}), 404
-
-    # 5) Save uploaded CSV to a temp location
-    filename = secure_filename(file.filename)
-    tmp_path = os.path.join("/tmp", filename)
-    file.save(tmp_path)
-
+    responses:
+      200:
+        description: Prediction successful
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+              example: Prediction successful
+      400:
+        description: Bad request (missing parameters or invalid file)
+        schema:
+          type: object
+          properties:
+            error:
+              type: string
+              example: Missing model_name in form data
+      401:
+        description: Unauthorized or invalid JWT
+        schema:
+          type: object
+          properties:
+            error:
+              type: string
+              example: Invalid or expired token
+      404:
+        description: Model not found
+        schema:
+          type: object
+          properties:
+            error:
+              type: string
+              example: Model 'best_model' not found
+      500:
+        description: Internal server error
+        schema:
+          type: object
+          properties:
+            error:
+              type: string
+              example: Unexpected server error during prediction
+    """
     try:
-        # 6) Load the chosen model
-        model = tf.keras.models.load_model(model_path)
-
-        # 7) Read CSV and prepare features (drop "label" column if present)
-        data = pd.read_csv(tmp_path)
-        X = data.drop(columns=["type"], errors="ignore").values
-
-        # 8) Run inference
+        user_id = authenticate_request()
+        model_name, file, model_path = validate_input()
+        tmp_path = save_uploaded_file(file)
+        model, data = load_model_and_data(model_path, tmp_path)
+        X, y_true = prepare_features(data)
+        
         predictions_proba = model.predict(X)
         predicted_labels = np.argmax(predictions_proba, axis=1).tolist()
 
-        # 9) Save each prediction into the database
-        for lab in predicted_labels:
-            pred_record = Prediction(
-                user_id=user_id,
-                label=str(int(lab)),
-                model_used=model_name
-            )
-            db.session.add(pred_record)
+        accuracy = accuracy_score(y_true, predicted_labels) if y_true else None
+        cm = confusion_matrix(y_true, predicted_labels).tolist() if y_true else None
+
+        save_heartbeat_predictions(data, predicted_labels, predictions_proba)
+        
+        if y_true:
+            save_model_performance(model_name, accuracy, cm)
+
         db.session.commit()
 
-        # 10) Build a simple confusion matrix / accuracy if labels provided
-        response_payload = {
-            "message": "Prediction successful",
-            "predictions": predicted_labels,
-            "model_used": model_name
-        }
-
-        # Optionally compute confusion matrix & accuracy if "type" column existed
-        if "type" in data.columns:
-            true_labels = data["type"].astype(int).tolist()
-            from sklearn.metrics import confusion_matrix, accuracy_score
-            cm = confusion_matrix(true_labels, predicted_labels).tolist()
-            acc = accuracy_score(true_labels, predicted_labels)
-            response_payload["confusion_matrix"] = cm
-            response_payload["accuracy"] = acc
-
-        return jsonify(response_payload), 200
+        return jsonify({"message": "Prediction successful"}), 200
 
     except Exception as e:
-        # Clean up temp file, if desired: os.remove(tmp_path)
         return jsonify({"error": str(e)}), 500
+
 
 @bp.route("/models", methods=["GET"])
 def list_models():
@@ -206,3 +165,174 @@ responses:
     print("Model folder path:", MODEL_FOLDER)
     print("Files found:", os.listdir(MODEL_FOLDER))
     return jsonify({"models": model_names,}), 200
+
+@bp.route("/model-performance/<int:id>", methods=["GET"])
+def get_model_performance_by_id(id):
+    """
+    Get model performance record by ID
+    ---
+    tags:
+      - ModelPerformance
+    parameters:
+      - name: id
+        in: path
+        type: integer
+        required: true
+        description: ID of the model performance record
+    responses:
+      200:
+        description: Model performance found
+        schema:
+          type: object
+          properties:
+            id:
+              type: integer
+            model_name:
+              type: string
+            accuracy:
+              type: number
+            timestamp:
+              type: string
+      404:
+        description: Model performance not found
+    """
+    perf = ModelPerformance.query.get(id)
+    if not perf:
+        return jsonify({"error": "Model performance not found"}), 404
+
+    return jsonify({
+        "id": perf.id,
+        "model_name": perf.model_name,
+        "accuracy": perf.accuracy,
+        "timestamp": perf.timestamp.isoformat()
+    }), 200
+
+
+@bp.route("/model-performance", methods=["GET"])
+def list_model_performance_accuracies():
+    """
+    List accuracy values of all model performance records
+    ---
+    tags:
+      - ModelPerformance
+    responses:
+      200:
+        description: List of model accuracy entries
+        schema:
+          type: object
+          properties:
+            accuracies:
+              type: array
+              items:
+                type: number
+              example: [0.85, 0.91, 0.78]
+    """
+    performances = ModelPerformance.query.order_by(ModelPerformance.timestamp.desc()).all()
+    accuracies = [{"id": p.id, "model": p.model_name, "accuracy": p.accuracy} for p in performances]
+    return jsonify({"accuracies": accuracies}), 200
+
+def authenticate_request():
+    auth_header = request.headers.get("Authorization", None)
+    if not auth_header or not auth_header.startswith("Bearer "):
+        raise Exception("Missing or invalid Authorization header")
+    token = auth_header.split(" ")[1]
+    payload = verify_token(token)
+    if not payload:
+        raise Exception("Invalid or expired token")
+    user_id = payload.get("user_id")
+    if user_id is None:
+        raise Exception("Invalid token payload")
+    return user_id
+
+
+def validate_input():
+    model_name = request.form.get("model_name")
+    if not model_name:
+        raise Exception("Missing model_name in form data")
+    if "file" not in request.files:
+        raise Exception("No file part")
+    file = request.files["file"]
+    if file.filename == "":
+        raise Exception("No selected file")
+    if not allowed_file(file.filename, {"csv"}):
+        raise Exception("Invalid file type; only CSV allowed")
+    model_path = os.path.join(MODEL_FOLDER, f"{model_name}.h5")
+    if not os.path.exists(model_path):
+        raise Exception(f"Model '{model_name}' not found")
+    return model_name, file, model_path
+
+
+def save_uploaded_file(file):
+    filename = secure_filename(file.filename)
+    tmp_path = os.path.join("/tmp", filename)
+    file.save(tmp_path)
+    return tmp_path
+
+
+def load_model_and_data(model_path, csv_path):
+    model = tf.keras.models.load_model(model_path)
+    data = pd.read_csv(csv_path)
+    return model, data
+
+
+def prepare_features(data):
+    base_features = [
+        "pre-RR", "post-RR", "pPeak", "tPeak", "rPeak", "sPeak", "qPeak",
+        "qrs_interval", "pq_interval", "qt_interval", "st_interval",
+        "qrs_morph0", "qrs_morph1", "qrs_morph2", "qrs_morph3", "qrs_morph4"
+    ]
+    feature_cols = [f"{i}_{feat}" for i in range(2) for feat in base_features]
+    required_columns = ["record"] + feature_cols
+    missing = [col for col in required_columns if col not in data.columns]
+    if missing:
+        raise Exception(f"Missing required columns in CSV: {', '.join(missing)}")
+    X = data[feature_cols].values
+    y_true = data["type"].tolist() if "type" in data.columns else None
+    return X, y_true
+
+
+def ensure_patient_exists(patient_id):
+    patient = Patient.query.get(patient_id)
+    if not patient:
+        patient = Patient(id=patient_id, name="tmp")
+        db.session.add(patient)
+        db.session.flush()
+    return patient
+
+
+def save_heartbeat_predictions(data, predicted_labels, predictions_proba):
+    for idx, row in data.iterrows():
+        patient_id = int(row["record"])
+        ensure_patient_exists(patient_id)
+        heartbeat = Heartbeat(
+            patient_id=patient_id,
+            pre_RR=row["0_pre-RR"],
+            post_RR=row["0_post-RR"],
+            p_peak=row["0_pPeak"],
+            t_peak=row["0_tPeak"],
+            r_peak=row["0_rPeak"],
+            s_peak=row["0_sPeak"],
+            q_peak=row["0_qPeak"],
+            qrs_interval=row["0_qrs_interval"],
+            pq_interval=row["0_pq_interval"],
+            qt_interval=row["0_qt_interval"],
+            st_interval=row["0_st_interval"],
+            qrs_morph0=row["0_qrs_morph0"],
+            qrs_morph1=row["0_qrs_morph1"],
+            qrs_morph2=row["0_qrs_morph2"],
+            qrs_morph3=row["0_qrs_morph3"],
+            qrs_morph4=row["0_qrs_morph4"],
+            heartbeat_type=row.get("type"),
+            predicted_type=str(predicted_labels[idx]),
+            prediction_confidence=float(np.max(predictions_proba[idx]))
+        )
+        db.session.add(heartbeat)
+
+
+def save_model_performance(model_name, accuracy, cm):
+    performance = ModelPerformance(
+        model_name=model_name,
+        accuracy=accuracy,
+        confusion_matrix=cm
+    )
+    db.session.add(performance)
