@@ -9,6 +9,7 @@ export const useAuthStore = defineStore("auth", {
     email: null,
     error: null,
   }),
+
   actions: {
     async login(email, password) {
       try {
