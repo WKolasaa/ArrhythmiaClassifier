@@ -4,25 +4,25 @@
       <q-card class="col bg-white text-primary" flat bordered>
         <q-card-section>
           <div class="text-h6">Total Patients</div>
-          <div class="text-h4">{{ totalPatients }}</div>
+          <div class="text-h4">{{ patientStore.all.length }}</div>
         </q-card-section>
       </q-card>
       <q-card class="col bg-white text-primary" flat bordered>
         <q-card-section>
           <div class="text-h6">New Patients</div>
-          <div class="text-h4">{{ newPatients }}</div>
+          <div class="text-h4">--</div>
         </q-card-section>
       </q-card>
       <q-card class="col bg-white text-primary" flat bordered>
         <q-card-section>
           <div class="text-h6">Classified Arrhythmias</div>
-          <div class="text-h4">{{ classified }}</div>
+          <div class="text-h4">--</div>
         </q-card-section>
       </q-card>
       <q-card class="col bg-white text-primary" flat bordered>
         <q-card-section>
           <div class="text-h6">Total Arrhythmias</div>
-          <div class="text-h4">{{ totalArrhythmias }}</div>
+          <div class="text-h4">--</div>
         </q-card-section>
       </q-card>
     </div>
@@ -32,39 +32,41 @@
         Patient List
       </q-card-section>
       <q-table
-        :rows="patients"
+        :rows="patientStore.all"
         :columns="columns"
         row-key="id"
         flat
         bordered
         dense
+        no-data-label="No patients found"
       />
     </q-card>
   </q-page>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { onMounted } from 'vue'
+import { usePatientStore } from '../stores/pacient'
 
-const totalPatients = ref(218)
-const newPatients = ref(125)
-const classified = ref(25)
-const totalArrhythmias = ref(2479)
+
+const patientStore = usePatientStore()
+
+onMounted(() => {
+  patientStore.fetchAllPatients()
+})
 
 const columns = [
   { name: 'id', label: 'ID', field: 'id', align: 'left' },
   { name: 'name', label: 'Name', field: 'name', align: 'left' },
-  { name: 'doctor', label: 'Assigned Doctor', field: 'doctor', align: 'left' },
-  { name: 'admitDate', label: 'Date of Admit', field: 'admitDate', align: 'left' },
-  { name: 'disease', label: 'Condition', field: 'disease', align: 'left' },
-  { name: 'room', label: 'Room No', field: 'room', align: 'left' }
+  { name: 'gender', label: 'Gender', field: 'gender', align: 'left' },
+  { name: 'birth_date', label: 'Birth Date', field: 'birth_date', align: 'left' },
+  { name: 'contact_info', label: 'Contact Info', field: 'contact_info', align: 'left' }
 ]
-
-const patients = ref([
-  { id: 1, name: 'Jens Brincker', doctor: 'Dr. Kenny', admitDate: '2023-05-27', disease: 'Bradycardia', room: '101' },
-  { id: 2, name: 'Mark Hay', doctor: 'Dr. Mark', admitDate: '2023-06-10', disease: 'Tachycardia', room: '102' },
-  { id: 3, name: 'Anthony Davie', doctor: 'Dr. Cinnamon', admitDate: '2023-06-15', disease: 'AFib', room: '103' },
-  { id: 4, name: 'David Perry', doctor: 'Dr. Felix', admitDate: '2023-06-22', disease: 'PVCs', room: '104' },
-  { id: 5, name: 'Sue Woodger', doctor: 'Dr. Sharma', admitDate: '2023-07-01', disease: 'NSR', room: '105' }
-])
 </script>
+
+<style scoped> 
+:deep(.q-card.bg-white) {
+  background-color: var(--q-color-surface) !important;
+  color: var(--q-color-on-surface) !important;
+}
+</style>
