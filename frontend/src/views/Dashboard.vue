@@ -91,7 +91,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { usePatientStore } from '../stores/pacient'
+import { usePatientStore } from '../stores/patients'
 
 const patientStore = usePatientStore()
 const showDialog = ref(false)
