@@ -178,7 +178,7 @@ const handleFileUpload = async () => {
 
   isUploading.value = true
   showUploadDialog.value = false
-  proxy?.$q?.loading.show({ message: 'Uploading...' })
+  proxy?.$q?.loading.show({ message: 'Analyzing...' })
 
   try {
     const res = await fetch('http://localhost:5001/model/predict', {
