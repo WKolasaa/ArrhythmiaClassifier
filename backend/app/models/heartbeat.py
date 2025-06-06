@@ -29,6 +29,7 @@ class Heartbeat(db.Model):
     # Model prediction (optional)
     predicted_type = db.Column(db.String(20))         # e.g., 'Normal', 'Arrhythmic'
     prediction_confidence = db.Column(db.Float)       # optional: if using probability scores
+    model_name = db.Column(db.String(100), nullable=False) # Name of the model used for prediction
 
     patient = db.relationship('Patient', backref=db.backref('heartbeats', lazy=True))
 

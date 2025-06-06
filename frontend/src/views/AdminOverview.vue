@@ -1,91 +1,73 @@
 <template>
-  <q-page class="q-pa-md">
-    <!-- Metric Cards -->
-    <div class="row q-gutter-sm q-mb-md justify-around">
-      <q-card
-        v-for="metric in metrics"
-        :key="metric.label"
-        class="col-2 q-pa-md"
-        flat
-        bordered
-        :class="metricCardClass"
-      >
-        <q-card-section class="text-center">
-          <q-icon :name="metric.icon" size="36px" class="q-mb-sm" />
-          <div class="text-subtitle2">{{ metric.label }}</div>
-          <div class="text-h5 q-mt-xs">{{ metric.value }}</div>
-        </q-card-section>
-      </q-card>
-    </div>
+  <q-page padding class="bg-grey-2">
+    <q-card flat bordered class="q-pa-md">
+      <!-- Header -->
+      <q-card-section class="text-h6 text-primary q-pb-md">
+        Model Performance Records
+      </q-card-section>
 
-    <!-- Class Distribution & Per-Class Performance -->
-    <div class="row q-col-gutter-md q-mb-md">
-      <q-card class="col-6" flat bordered>
-        <q-card-section class="text-h6">Class Distribution</q-card-section>
-        <q-card-section>
-          <BarChart
-            :chartData="classDistributionData"
-            :chartOptions="chartOptions"
-          />
-        </q-card-section>
-      </q-card>
-
-      <q-card class="col-6" flat bordered>
-        <q-card-section class="text-h6">Pre-Class Performance</q-card-section>
-        <q-card-section>
-          <q-markup-table dense flat bordered>
-            <thead>
+      <!-- Table Section -->
+      <q-card-section class="q-pa-none">
+        <div class="scrollable-table-container">
+          <q-markup-table flat bordered dense class="striped-table bg-white">
+            <thead class="bg-primary text-white">
               <tr>
-                <th>Class</th>
-                <th>F1 Score</th>
-                <th>Precision</th>
-                <th>Recall</th>
+                <th class="text-left">Model Name</th>
+                <th class="text-center">Accuracy</th>
+                <th class="text-center">Timestamp</th>
+                <th class="text-center">Confusion Matrix</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="row in classMetrics" :key="row.class">
-                <td>{{ row.class }}</td>
-                <td>{{ row.f1 }}</td>
-                <td>{{ row.precision }}</td>
-                <td>{{ row.recall }}</td>
+              <tr v-for="model in performanceList" :key="model.id" class="hoverable-row">
+                <td class="text-left text-body1 q-px-sm q-py-xs">
+                  {{ model.model_name }}
+                </td>
+                <td class="text-center text-body1 q-px-sm q-py-xs">
+                  {{ model.accuracy?.toFixed(4) || '—' }}
+                </td>
+                <td class="text-center text-body1 q-px-sm q-py-xs">
+                  {{ formatTimestamp(model.timestamp) }}
+                </td>
+                <td class="text-center q-px-sm q-py-xs">
+                  <div class="nested-matrix-container">
+                    <q-markup-table dense bordered flat class="bg-grey-1 nested-matrix-table">
+                      <thead>
+                        <tr>
+                          <th></th>
+                          <th
+                            v-for="(label, i) in classLabels"
+                            :key="'header-' + i"
+                            class="text-center text-caption"
+                          >
+                            {{ label }}
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr
+                          v-for="(row, rowIndex) in model.confusion_matrix"
+                          :key="'row-' + rowIndex"
+                        >
+                          <td class="text-left text-caption text-bold q-pl-sm">
+                            {{ classLabels[rowIndex] }}
+                          </td>
+                          <td
+                            v-for="(cell, colIndex) in row"
+                            :key="'cell-' + colIndex"
+                            class="text-center text-caption nested-cell"
+                            :class="rowIndex === colIndex ? 'bg-green-2 text-bold' : ''"
+                          >
+                            {{ cell }}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </q-markup-table>
+                  </div>
+                </td>
               </tr>
             </tbody>
           </q-markup-table>
-        </q-card-section>
-      </q-card>
-    </div>
-
-    <!-- Confusion Matrix -->
-    <q-card flat bordered class="q-pa-md">
-      <q-card-section class="text-h6">Confusion Matrix</q-card-section>
-      <q-card-section class="confusion-matrix">
-        <div class="matrix-container">
-          <!-- Top row: empty corner + Predicted label -->
-          <div class="cell corner"></div>
-          <div class="cell span-columns" :colspan="labels.length"></div>
-
-          <!-- Header row: blank + predicted class labels -->
-          <div class="cell header">Actual | Predicted</div>
-          <div
-            v-for="label in labels"
-            :key="'pred-label-' + label"
-            class="cell header"
-          >
-            {{ label }}
-          </div>
-
-          <!-- Matrix rows -->
-          <template v-for="(row, rowIndex) in matrix" :key="'row-' + rowIndex">
-            <div class="cell header">{{ labels[rowIndex] }}</div>
-            <div
-              v-for="(value, colIndex) in row"
-              :key="'val-' + rowIndex + '-' + colIndex"
-              class="cell"
-              :style="{ backgroundColor: colors[colIndex % colors.length] }"
-            >
-              {{ value }}
-            </div>
-          </template>
         </div>
       </q-card-section>
     </q-card>
@@ -93,95 +75,128 @@
 </template>
 
 <script setup>
-import { ref, computed } from "vue";
-import { Dark } from "quasar";
-import BarChart from "../components/BarChart.vue";
+import { ref, onMounted } from 'vue'
 
-const isDark = computed(() => Dark.isActive);
-const metricCardClass = computed(() =>
-  isDark.value ? "bg-dark text-white" : "bg-white text-primary"
-);
+const performanceList = ref([])
 
-const metrics = ref([
-  { label: "Accuracy", value: "0.95", icon: "check_circle" },
-  { label: "Precision", value: "0.92", icon: "precision_manufacturing" },
-  { label: "Recall", value: "0.90", icon: "history" },
-  { label: "F1-score", value: "0.91", icon: "equalizer" },
-]);
+const classLabels = [
+  'Normal',
+  'Supraventricular',
+  'Premature',
+  'Arrhythmic',
+  'Unknown'
+]
 
-const classDistributionData = {
-  labels: ["Normal", "AFib", "PVC", "LBBB"],
-  datasets: [
-    {
-      label: "Count",
-      backgroundColor: ["#42A5F5", "#66BB6A", "#FFA726", "#AB47BC"],
-      data: [4700, 1100, 1000, 900],
-    },
-  ],
-};
+const fetchModelPerformances = async () => {
+  try {
+    const res = await fetch('http://localhost:5001/model/model-performance', {
+      headers: {
+        Authorization: 'Bearer ' + localStorage.getItem('token')
+      }
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || 'Failed to fetch performance list')
 
-const chartOptions = {
-  responsive: true,
-  plugins: {
-    legend: { display: false },
-    tooltip: { enabled: true },
-  },
-  scales: {
-    y: {
-      beginAtZero: true,
-    },
-  },
-};
+    const allDetails = await Promise.all(
+      data.accuracies.map(async (entry) => {
+        const detailRes = await fetch(
+          `http://localhost:5001/model/model-performance/${entry.id}`,
+          {
+            headers: {
+              Authorization: 'Bearer ' + localStorage.getItem('token')
+            }
+          }
+        )
+        return await detailRes.json()
+      })
+    )
 
-const classMetrics = ref([
-  { class: "Normal", f1: "0.96", precision: "0.92", recall: "0.95" },
-  { class: "AFib", f1: "0.86", precision: "0.86", recall: "0.83" },
-  { class: "PVC", f1: "0.90", precision: "0.90", recall: "0.80" },
-  { class: "LBBB", f1: "0.90", precision: "0.90", recall: "0.90" },
-]);
+    performanceList.value = allDetails
+  } catch (err) {
+    console.error('Error loading model performance records:', err.message)
+  }
+}
 
-const labels = ["Normal", "AFib", "PVC"];
-const matrix = [
-  [95, 2, 1],
-  [41, 8, 1],
-  [2, 47, 5],
-];
-const colors = ["#42A5F5", "#66BB6A", "#FFA726"];
+const formatTimestamp = (ts) => {
+  if (!ts) return '—'
+  const date = new Date(ts)
+  return date.toLocaleString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  })
+}
+
+onMounted(fetchModelPerformances)
 </script>
 
 <style scoped>
-.confusion-matrix .matrix-container {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr); /* Adjust if you add more classes */
-  grid-auto-rows: minmax(30px, auto);
-  text-align: center;
-  gap: 2px;
+/* Make the page background a very light grey */
+.bg-grey-2 {
+  background-color: #f5f5f5;
 }
 
-.cell {
-  padding: 8px;
-  border: 1px solid #ccc;
-  font-weight: bold;
-  color: white;
+/* Header styling */
+.text-primary {
+  color: #1976d2;
 }
 
-.cell.header {
-  background-color: #333;
-  color: white;
+/* Allow horizontal scrolling on narrower screens */
+.scrollable-table-container {
+  overflow-x: auto;
 }
 
-.cell.corner {
-  grid-column: span 1;
-  background-color: transparent;
-  border: none;
+/* Striping for the outer table rows */
+.striped-table tbody tr:nth-child(even) {
+  background-color: #fafafa;
 }
 
-.cell.span-columns {
-  grid-column: span 3;
-  font-weight: bold;
-  color: black;
-  background-color: transparent;
-  border: none;
-  text-align: center;
+/* Hover effect on outer table rows */
+.hoverable-row:hover {
+  background-color: #e3f2fd;
+}
+
+/* Confusion matrix container: ensure it doesn’t overflow */
+.nested-matrix-container {
+  overflow-x: auto;
+  margin: 0 auto;
+}
+
+/* Collapse nested table borders slightly */
+.nested-matrix-table th,
+.nested-matrix-table td {
+  padding: 4px 6px;
+  border-width: 1px !important;
+  font-size: 0.75rem;
+}
+
+/* Center the nested table horizontally */
+.nested-matrix-container .nested-matrix-table {
+  margin: 0 auto;
+}
+
+/* Highlight true-positive diagonal cells in the confusion matrix */
+.bg-green-2 {
+  background-color: #e8f5e9 !important;
+}
+
+/* Ensure the main card has a subtle border and background */
+q-card {
+  background-color: #ffffff;
+  border-radius: 8px;
+}
+
+/* Reduce padding on table cells for a tighter look */
+q-markup-table td,
+q-markup-table th {
+  padding: 8px 12px;
+}
+
+/* Header row text styling */
+q-markup-table thead th {
+  font-weight: 600;
 }
 </style>

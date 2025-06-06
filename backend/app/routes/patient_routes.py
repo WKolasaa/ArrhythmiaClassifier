@@ -320,3 +320,66 @@ def get_dashboard_stats():
     except Exception as e:
         print(f"Stats error: {e}")
         return jsonify({'error': 'Failed to get stats'}), 500
+@bp.route('/bulk-upload', methods=['POST'])
+def bulk_upload_patients():
+    """
+    Upload multiple patients from CSV
+    ---
+    tags:
+      - Patients
+    consumes:
+      - multipart/form-data
+    parameters:
+      - name: file
+        in: formData
+        type: file
+        required: true
+        description: CSV file containing patient data
+    responses:
+      200:
+        description: Patients uploaded successfully
+      400:
+        description: Invalid or missing file
+    """
+    try:
+        if 'file' not in request.files:
+            return jsonify({"error": "No file provided"}), 400
+
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({"error": "Empty filename"}), 400
+
+        filename = secure_filename(file.filename)
+        stream = io.StringIO(file.stream.read().decode("UTF8"), newline=None)
+        reader = csv.DictReader(stream)
+
+        required_fields = {'name'}
+        added = 0
+
+        for row in reader:
+            if not required_fields.issubset(row):
+                continue
+
+            name = row.get('name')
+            gender = row.get('gender')
+            birth_date = row.get('birth_date')
+            contact_info = row.get('contact_info')
+
+            birth_date_parsed = datetime.strptime(birth_date, '%Y-%m-%d').date() if birth_date else None
+
+            patient = Patient(
+                name=name,
+                gender=gender,
+                birth_date=birth_date_parsed,
+                contact_info=contact_info
+            )
+            db.session.add(patient)
+            added += 1
+
+        db.session.commit()
+
+        return jsonify({"message": f"{added} patients added successfully"}), 200
+
+    except Exception as e:
+        print(f"Bulk upload error: {e}")
+        return jsonify({"error": "Failed to process file"}), 500
