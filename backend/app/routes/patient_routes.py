@@ -3,6 +3,12 @@ from app.extensions import db
 from app.models.patient import Patient
 from datetime import datetime
 from app.models.heartbeat import Heartbeat
+from sqlalchemy import desc
+import traceback
+import io
+import csv
+from werkzeug.utils import secure_filename
+
 
 bp = Blueprint('patients', __name__, url_prefix='/patients')
 
@@ -72,54 +78,35 @@ def create_patient():
         print(f"Patient creation error: {e}")
         return jsonify({"error": "Internal server error"}), 500
 
-
 @bp.route('', methods=['GET'])
 def list_patients():
-    """
-        List all patients
-        ---
-        tags:
-          - Patients
-        responses:
-          200:
-            description: A list of patients
-            schema:
-              type: array
-              items:
-                type: object
-                properties:
-                  id:
-                    type: integer
-                  name:
-                    type: string
-                  gender:
-                    type: string
-                  birth_date:
-                    type: string
-                  contact_info:
-                    type: string
-                  created_at:
-                    type: string
-        500:
-          description: Server error
-    """
     try:
         patients = Patient.query.all()
         result = []
         for p in patients:
+            latest_heartbeat = Heartbeat.query \
+                .filter_by(patient_id=p.id) \
+                .order_by(desc(Heartbeat.timestamp)) \
+                .first()
+
+            last_prediction = latest_heartbeat.predicted_type if latest_heartbeat else None
+
             result.append({
                 'id': p.id,
                 'name': p.name,
                 'gender': p.gender,
                 'birth_date': p.birth_date.strftime('%Y-%m-%d') if p.birth_date else None,
                 'contact_info': p.contact_info,
-                'created_at': p.created_at.isoformat()
+                'created_at': p.created_at.isoformat(),
+                'last_prediction': last_prediction
             })
+
         return jsonify(result), 200
 
     except Exception as e:
         print(f"Error listing patients: {e}")
         return jsonify({"error": "Internal server error"}), 500
+
 
 
 @bp.route('/<int:patient_id>', methods=['GET'])
@@ -316,3 +303,108 @@ def get_heartbeat_by_id(patient_id, heartbeat_id):
   }
 
   return jsonify(data), 200
+@bp.route('/stats', methods=['GET'])
+def get_dashboard_stats():
+    """
+    Get dashboard statistics: total patients, classified arrhythmias, total arrhythmias
+    """
+    try:
+        total_patients = Patient.query.count()
+        total_arrhythmias = Heartbeat.query.count()
+
+      
+        classified_arrhythmias = Heartbeat.query.filter(
+            Heartbeat.predicted_type.in_(["3", "Arrhythmic"])
+        ).count()
+
+        return jsonify({
+            'total_patients': total_patients,
+            'total_arrhythmias': total_arrhythmias,
+            'classified_arrhythmias': classified_arrhythmias
+        }), 200
+    except Exception as e:
+        print(f"Stats error: {e}")
+        return jsonify({'error': 'Failed to get stats'}), 500
+@bp.route('/bulk-upload', methods=['POST'])
+def bulk_upload_patients():
+    """
+    Upload multiple patients from CSV
+    ---
+    tags:
+      - Patients
+    consumes:
+      - multipart/form-data
+    parameters:
+      - name: file
+        in: formData
+        type: file
+        required: true
+        description: CSV file containing patient data
+    responses:
+      200:
+        description: Patients uploaded successfully
+      400:
+        description: Invalid or missing file
+    """
+    try:
+        if 'file' not in request.files:
+            return jsonify({"error": "No file provided"}), 400
+
+        file = request.files['file']
+        if not file or file.filename == '':
+            return jsonify({"error": "Empty filename"}), 400
+
+        # Print for debugging (optional)
+        print("Received file:", file.filename)
+
+        # Read and parse CSV
+        stream = io.StringIO(file.stream.read().decode("utf-8"), newline=None)
+        reader = csv.DictReader(stream)
+
+        required_fields = {'name'}
+        added = 0
+        skipped = 0
+
+        for row in reader:
+            print("Row:", row)  # Debug: See what the row looks like
+            if not required_fields.issubset(row.keys()):
+                skipped += 1
+                continue
+
+            name = row.get('name')
+            if not name or not name.strip():
+                skipped += 1
+                continue
+
+            gender = row.get('gender')
+            birth_date = row.get('birth_date')
+            contact_info = row.get('contact_info')
+
+            # Parse birth_date safely
+            birth_date_parsed = None
+            if birth_date:
+                try:
+                    birth_date_parsed = datetime.strptime(birth_date, '%Y-%m-%d').date()
+                except Exception as e:
+                    print(f"Invalid birth_date: {birth_date} for row {row} - {e}")
+                    birth_date_parsed = None
+
+            patient = Patient(
+                name=name,
+                gender=gender,
+                birth_date=birth_date_parsed,
+                contact_info=contact_info
+            )
+            db.session.add(patient)
+            added += 1
+
+        db.session.commit()
+
+        return jsonify({
+            "message": f"{added} patients added successfully",
+            "skipped": skipped
+        }), 200
+
+    except Exception as e:
+        print("Bulk upload error:\n", traceback.format_exc())
+        return jsonify({"error": "Failed to process file"}), 500

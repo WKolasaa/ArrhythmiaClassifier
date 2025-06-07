@@ -19,6 +19,13 @@ from app.models.patient import Patient
 
 bp = Blueprint("predict", __name__, url_prefix="/model")
 MODEL_FOLDER = os.path.join(os.getcwd(), "model")  # Should point to backend/model/
+PREDICTION_LABELS = {
+    0: "Normal",
+    1: "Supraventricular",
+    2: "Premature",
+    3: "Arrhythmic",
+    4: "Unknown"
+}
 
 
 @bp.route("/predict", methods=["POST"])
@@ -110,7 +117,7 @@ def predict():
         accuracy = accuracy_score(y_true, predicted_labels) if y_true else None
         cm = confusion_matrix(y_true, predicted_labels).tolist() if y_true else None
 
-        save_heartbeat_predictions(data, predicted_labels, predictions_proba)
+        save_heartbeat_predictions(data, predicted_labels, predictions_proba, model_name)
         
         if y_true:
             save_model_performance(model_name, accuracy, cm)
@@ -191,6 +198,8 @@ def get_model_performance_by_id(id):
               type: string
             accuracy:
               type: number
+            confusion_matrix:
+              type: array
             timestamp:
               type: string
       404:
@@ -204,7 +213,8 @@ def get_model_performance_by_id(id):
         "id": perf.id,
         "model_name": perf.model_name,
         "accuracy": perf.accuracy,
-        "timestamp": perf.timestamp.isoformat()
+        "confusion_matrix": perf.confusion_matrix, 
+        "timestamp": perf.timestamp.isoformat() if perf.timestamp else None
     }), 200
 
 
@@ -300,10 +310,11 @@ def ensure_patient_exists(patient_id):
     return patient
 
 
-def save_heartbeat_predictions(data, predicted_labels, predictions_proba):
+def save_heartbeat_predictions(data, predicted_labels, predictions_proba, model_name):
     for idx, row in data.iterrows():
         patient_id = int(row["record"])
         ensure_patient_exists(patient_id)
+
         heartbeat = Heartbeat(
             patient_id=patient_id,
             pre_RR=row["0_pre-RR"],
@@ -323,10 +334,12 @@ def save_heartbeat_predictions(data, predicted_labels, predictions_proba):
             qrs_morph3=row["0_qrs_morph3"],
             qrs_morph4=row["0_qrs_morph4"],
             heartbeat_type=row.get("type"),
-            predicted_type=str(predicted_labels[idx]),
-            prediction_confidence=float(np.max(predictions_proba[idx]))
+            predicted_type=PREDICTION_LABELS.get(predicted_labels[idx], "Unknown"),
+            prediction_confidence=float(np.max(predictions_proba[idx])),
+            model_name=model_name  
         )
         db.session.add(heartbeat)
+
 
 
 def save_model_performance(model_name, accuracy, cm):
