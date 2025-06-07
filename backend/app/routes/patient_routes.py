@@ -4,6 +4,11 @@ from app.models.patient import Patient
 from datetime import datetime
 from app.models.heartbeat import Heartbeat
 from sqlalchemy import desc
+import traceback
+import io
+import csv
+from werkzeug.utils import secure_filename
+
 
 bp = Blueprint('patients', __name__, url_prefix='/patients')
 
@@ -346,26 +351,43 @@ def bulk_upload_patients():
             return jsonify({"error": "No file provided"}), 400
 
         file = request.files['file']
-        if file.filename == '':
+        if not file or file.filename == '':
             return jsonify({"error": "Empty filename"}), 400
 
-        filename = secure_filename(file.filename)
-        stream = io.StringIO(file.stream.read().decode("UTF8"), newline=None)
+        # Print for debugging (optional)
+        print("Received file:", file.filename)
+
+        # Read and parse CSV
+        stream = io.StringIO(file.stream.read().decode("utf-8"), newline=None)
         reader = csv.DictReader(stream)
 
         required_fields = {'name'}
         added = 0
+        skipped = 0
 
         for row in reader:
-            if not required_fields.issubset(row):
+            print("Row:", row)  # Debug: See what the row looks like
+            if not required_fields.issubset(row.keys()):
+                skipped += 1
                 continue
 
             name = row.get('name')
+            if not name or not name.strip():
+                skipped += 1
+                continue
+
             gender = row.get('gender')
             birth_date = row.get('birth_date')
             contact_info = row.get('contact_info')
 
-            birth_date_parsed = datetime.strptime(birth_date, '%Y-%m-%d').date() if birth_date else None
+            # Parse birth_date safely
+            birth_date_parsed = None
+            if birth_date:
+                try:
+                    birth_date_parsed = datetime.strptime(birth_date, '%Y-%m-%d').date()
+                except Exception as e:
+                    print(f"Invalid birth_date: {birth_date} for row {row} - {e}")
+                    birth_date_parsed = None
 
             patient = Patient(
                 name=name,
@@ -378,8 +400,11 @@ def bulk_upload_patients():
 
         db.session.commit()
 
-        return jsonify({"message": f"{added} patients added successfully"}), 200
+        return jsonify({
+            "message": f"{added} patients added successfully",
+            "skipped": skipped
+        }), 200
 
     except Exception as e:
-        print(f"Bulk upload error: {e}")
+        print("Bulk upload error:\n", traceback.format_exc())
         return jsonify({"error": "Failed to process file"}), 500
