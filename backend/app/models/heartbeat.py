@@ -1,37 +1,20 @@
 from app.extensions import db
 from datetime import datetime
+from sqlalchemy import JSON
+
 class Heartbeat(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     patient_id = db.Column(db.Integer, db.ForeignKey('patient.id'), nullable=False)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
-    # Features from CSV
-    pre_RR = db.Column(db.Float)
-    post_RR = db.Column(db.Float)
-    p_peak = db.Column(db.Float)
-    t_peak = db.Column(db.Float)
-    r_peak = db.Column(db.Float)
-    s_peak = db.Column(db.Float)
-    q_peak = db.Column(db.Float)
-    qrs_interval = db.Column(db.Float)
-    pq_interval = db.Column(db.Float)
-    qt_interval = db.Column(db.Float)
-    st_interval = db.Column(db.Float)
-    qrs_morph0 = db.Column(db.Float)
-    qrs_morph1 = db.Column(db.Float)
-    qrs_morph2 = db.Column(db.Float)
-    qrs_morph3 = db.Column(db.Float)
-    qrs_morph4 = db.Column(db.Float)
+    ecg_features = db.Column(JSON)  # Stores the 188-length ECG feature vector
 
-    # Label from dataset
-    heartbeat_type = db.Column(db.String(5))  # Ground truth e.g., 'N', 'V', etc.
-
-    # Model prediction (optional)
-    predicted_type = db.Column(db.String(20))         # e.g., 'Normal', 'Arrhythmic'
-    prediction_confidence = db.Column(db.Float)       # optional: if using probability scores
-    model_name = db.Column(db.String(100), nullable=False) # Name of the model used for prediction
+    heartbeat_type = db.Column(db.String(5))  # Ground truth label
+    predicted_type = db.Column(db.String(64))  # e.g., 'Normal', 'Arrhythmic'
+    prediction_confidence = db.Column(db.Float)
+    model_name = db.Column(db.String(100), nullable=False)
 
     patient = db.relationship('Patient', backref=db.backref('heartbeats', lazy=True))
 
     def __repr__(self):
-        return f'<Heartbeat {self.heartbeat_type} for Patient {self.patient_id}>'
+        return f'<Heartbeat for Patient {self.patient_id}>'

@@ -21,10 +21,10 @@ bp = Blueprint("predict", __name__, url_prefix="/model")
 MODEL_FOLDER = os.path.join(os.getcwd(), "model")  # Should point to backend/model/
 PREDICTION_LABELS = {
     0: "Normal",
-    1: "Supraventricular",
-    2: "Premature",
-    3: "Arrhythmic",
-    4: "Unknown"
+    1: "Artial Premature",
+    2: "Premature ventricular contraction",
+    3: "Fusion of ventricular and normal",
+    4: "Fusion of paced and normal"
 }
 
 
@@ -286,18 +286,15 @@ def load_model_and_data(model_path, csv_path):
 
 
 def prepare_features(data):
-    base_features = [
-        "pre-RR", "post-RR", "pPeak", "tPeak", "rPeak", "sPeak", "qPeak",
-        "qrs_interval", "pq_interval", "qt_interval", "st_interval",
-        "qrs_morph0", "qrs_morph1", "qrs_morph2", "qrs_morph3", "qrs_morph4"
-    ]
-    feature_cols = [f"{i}_{feat}" for i in range(2) for feat in base_features]
-    required_columns = ["record"] + feature_cols
-    missing = [col for col in required_columns if col not in data.columns]
-    if missing:
-        raise Exception(f"Missing required columns in CSV: {', '.join(missing)}")
-    X = data[feature_cols].values
-    y_true = data["type"].tolist() if "type" in data.columns else None
+    # Extract features (first 188 columns)
+    X = data.iloc[:, :187].values
+
+    # Use the last column as ground truth if available
+    if data.shape[1] > 187:
+        y_true = data.iloc[:, 187].tolist()
+    else:
+        y_true = None
+
     return X, y_true
 
 
@@ -312,35 +309,21 @@ def ensure_patient_exists(patient_id):
 
 def save_heartbeat_predictions(data, predicted_labels, predictions_proba, model_name):
     for idx, row in data.iterrows():
-        patient_id = int(row["record"])
+        #patient_id = int(row["record"])
+        patient_id = 1 # For testing purposes, using a fixed patient_id
         ensure_patient_exists(patient_id)
+
+        ecg_vector = row.drop(labels=["record", "type"], errors="ignore").tolist()
 
         heartbeat = Heartbeat(
             patient_id=patient_id,
-            pre_RR=row["0_pre-RR"],
-            post_RR=row["0_post-RR"],
-            p_peak=row["0_pPeak"],
-            t_peak=row["0_tPeak"],
-            r_peak=row["0_rPeak"],
-            s_peak=row["0_sPeak"],
-            q_peak=row["0_qPeak"],
-            qrs_interval=row["0_qrs_interval"],
-            pq_interval=row["0_pq_interval"],
-            qt_interval=row["0_qt_interval"],
-            st_interval=row["0_st_interval"],
-            qrs_morph0=row["0_qrs_morph0"],
-            qrs_morph1=row["0_qrs_morph1"],
-            qrs_morph2=row["0_qrs_morph2"],
-            qrs_morph3=row["0_qrs_morph3"],
-            qrs_morph4=row["0_qrs_morph4"],
-            heartbeat_type=row.get("type"),
+            ecg_features=ecg_vector,
+            heartbeat_type=int(row[187]),
             predicted_type=PREDICTION_LABELS.get(predicted_labels[idx], "Unknown"),
             prediction_confidence=float(np.max(predictions_proba[idx])),
             model_name=model_name  
         )
         db.session.add(heartbeat)
-
-
 
 def save_model_performance(model_name, accuracy, cm):
     performance = ModelPerformance(
