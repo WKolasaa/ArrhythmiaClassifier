@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import tensorflow as tf
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from werkzeug.utils import secure_filename
 
 from app.extensions import db
@@ -17,7 +17,12 @@ from app.models.heartbeat import Heartbeat
 from app.models.modelperformance import ModelPerformance
 from app.models.patient import Patient
 
+import threading
+from app.ml.retrain import run_retraining
+
 bp = Blueprint("predict", __name__, url_prefix="/model")
+bpM = Blueprint('ml', __name__, url_prefix='/model')
+
 MODEL_FOLDER = os.path.join(os.getcwd(), "model")  # Should point to backend/model/
 PREDICTION_LABELS = {
     0: "Normal",
@@ -310,24 +315,26 @@ def ensure_patient_exists(patient_id):
 def save_heartbeat_predictions(data, predicted_labels, predictions_proba, model_name):
     try:
         for idx, row in data.iterrows():
-          #patient_id = int(row["record"])
-          #patient_id = 1 # For testing purposes, using a fixed patient_id
-          patient_id = row[188]
-          ensure_patient_exists(patient_id)
+            signal = row[:187].tolist()                      
+            label = str(int(row[187]))                       
+            patient_id = int(row[188])                       
 
-          ecg_vector = row.drop(labels=["record", "type"], errors="ignore").tolist()
+            ensure_patient_exists(patient_id)
 
-          heartbeat = Heartbeat(
-              patient_id=patient_id,
-              ecg_features=ecg_vector,
-              heartbeat_type=int(row[187]),
-              predicted_type=PREDICTION_LABELS.get(predicted_labels[idx], "Unknown"),
-              prediction_confidence=float(np.max(predictions_proba[idx])),
-              model_name=model_name  
-          )
-        db.session.add(heartbeat)
+            heartbeat = Heartbeat(
+                patient_id=patient_id,
+                ecg_features=signal,
+                heartbeat_type=label,
+                predicted_type=PREDICTION_LABELS.get(predicted_labels[idx], "Unknown"),
+                prediction_confidence=float(np.max(predictions_proba[idx])),
+                model_name=model_name
+            )
+            db.session.add(heartbeat)  
+        db.session.commit()            
     except Exception as e:
+        db.session.rollback()
         return jsonify({"error": str(e)}), 500
+
 
 def save_model_performance(model_name, accuracy, cm):
     performance = ModelPerformance(
@@ -336,3 +343,77 @@ def save_model_performance(model_name, accuracy, cm):
         confusion_matrix=cm
     )
     db.session.add(performance)
+
+
+@bpM.route('/retrain', methods=['POST'])
+def retrain():
+    """
+      Retrain the ECG CNN-LSTM model using labeled heartbeats
+      ---
+      tags:
+        - Model
+      parameters:
+        - name: Authorization
+          in: header
+          type: string
+          required: true
+          description: Bearer JWT token (e.g., "Bearer <your_token>")
+      responses:
+        200:
+          description: Retraining completed successfully
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: Retraining completed
+              model_version:
+                type: string
+                example: "1.4"
+        400:
+          description: Token is missing user ID
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: Token missing user_id
+        401:
+          description: Invalid or missing JWT token
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: Invalid or missing token
+        500:
+          description: Error during retraining (e.g., no valid heartbeats)
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: No valid heartbeats to train on.
+    """
+
+    token = request.headers.get('Authorization', '').replace('Bearer ', '')
+    payload = verify_token(token)
+    if not payload:
+        return jsonify({"error": "Invalid or missing token"}), 401
+
+    user_id = payload.get('user_id')
+    if user_id is None:
+        return jsonify({"error": "Token missing user_id"}), 400
+
+    app = current_app._get_current_object()
+
+    try:
+        version = run_retraining(app, user_id)
+        return jsonify({
+            "message": "Retraining completed",
+            "model_version": version
+        }), 200
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500

@@ -6,10 +6,12 @@ import time
 from sqlalchemy.exc import OperationalError
 from flasgger import Swagger
 from flask_cors import CORS
-
+import sys
 
 
 def create_app():
+    sys.stdout.reconfigure(line_buffering=True)
+
     app = Flask(__name__)
     app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("DATABASE_URL")
     app.config['SECRET_KEY'] = os.getenv("SECRET_KEY")
@@ -21,6 +23,7 @@ def create_app():
     app.register_blueprint(auth.bp)
     app.register_blueprint(patient_routes.bp)
     app.register_blueprint(model.bp)
+    app.register_blueprint(model.bpM)
 
 
     Swagger(app)
