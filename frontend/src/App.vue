@@ -32,7 +32,7 @@ vueMounted(() => {
     line.style.top = `${Math.random() * 100}%`
     line.style.left = `${Math.random() * 100}%`
     line.style.transform = `rotate(${Math.random() * 360}deg)`
-    line.style.width = `${100 + Math.random() * 150}px`
+    line.style.width = `${1000 + Math.random() * 150}px` //make the line longer 
 
     container.appendChild(line)
   }

@@ -1,5 +1,31 @@
 <template>
   <q-page class="q-pa-md">
+    <!-- Dashboard cards -->    <!-- DASHBOARD TITLE -->
+    <div class="text-h5 text-weight-bold q-mb-md q-ml-sm">Dashboard</div>
+
+    <!-- DASHBOARD CARDS -->
+    <div class="row q-gutter-md q-mb-xl">
+      <q-card
+        flat
+        bordered
+        class="dashboard-card q-pa-md col-12 col-sm-6 col-md-3"
+        v-for="card in cards"
+        :key="card.label"
+        style="min-height: 120px;"
+      >
+        <q-card-section class="q-pa-sm">
+          <div class="row items-center justify-between">
+            <div class="column">
+              <div class="text-subtitle2 text-grey-7">{{ card.label }}</div>
+              <div class="text-h6 text-bold text-primary">{{ card.value }}</div>
+            </div>
+            <q-icon :name="card.icon" :color="card.color" size="32px" />
+          </div>
+          <q-linear-progress :value="card.progress" :color="card.color" class="q-mt-sm" rounded />
+        </q-card-section>
+      </q-card>
+    </div>
+
     <!-- Patient List & Actions -->
     <q-card flat bordered class="q-pa-md">
       <q-card-section class="row items-center q-pb-none">
@@ -80,7 +106,7 @@
 
 
 <script setup>
-import { ref, onMounted, getCurrentInstance } from 'vue'
+import { ref, onMounted, getCurrentInstance, computed } from 'vue'
 import { usePatientStore } from '@/stores/patients'
 import { useRouter } from 'vue-router'
 
@@ -114,6 +140,38 @@ const columns = [
   { name: 'contact_info', label: 'Contact Info', field: 'contact_info', align: 'left' },
   { name: 'last_prediction', label: 'Prediction', field: 'last_prediction', align: 'left' }
 ]
+
+const cards = computed(() => [
+  {
+    label: 'New Patients',
+    value: '125', // Replace with real value if needed
+    icon: 'person_add',
+    color: 'purple',
+    progress: 0.5
+  },
+  {
+    label: 'Total Patients',
+    value: totalPatients.value,
+    icon: 'groups',
+    color: 'blue',
+    progress: 1
+  },
+  {
+    label: 'Classified Arrhythmias',
+    value: classified.value,
+    icon: 'favorite',
+    color: 'green',
+    progress: 0.4
+  },
+  {
+    label: 'Total Arrhythmias',
+    value: totalArrhythmias.value,
+    icon: 'monitor_heart',
+    color: 'orange',
+    progress: 0.7
+  }
+])
+
 
 const fetchPatients = async () => {
   await patientStore.fetchAllPatients()
@@ -249,3 +307,21 @@ onMounted(() => {
   fetchStats()
 })
 </script>
+
+<style scoped>
+.dashboard-cards-container {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 0 24px;
+}
+
+.dashboard-card {
+  flex: 1 1 220px;
+  max-width: 800px;
+  min-width: 220px;
+  border-radius: 12px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+</style>

@@ -21,8 +21,8 @@
 .line {
   position: absolute;
   width: 200px;
-  height: 2px;
-  background-color: rgba(0, 123, 255, 0.2); /* Light blue */
+  height: 10px;/*thickness of the background line */
+  background-color: rgba(0, 123, 255, 0.10); /* Light blue */
   transition: background-color 0.3s ease;
 }
 body.body--dark .line {
