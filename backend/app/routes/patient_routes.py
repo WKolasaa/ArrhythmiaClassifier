@@ -79,7 +79,7 @@ def create_patient():
         print(f"Patient creation error: {e}")
         return jsonify({"error": "Internal server error"}), 500
 
-from collections import Counter
+
 
 @bp.route('', methods=['GET'])
 def list_patients():
