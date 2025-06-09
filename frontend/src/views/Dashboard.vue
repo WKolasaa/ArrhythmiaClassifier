@@ -46,6 +46,8 @@
         flat
         bordered
         dense
+        :rows-per-page-options="[5, 10, 20, 50, 75, 100]"
+        :pagination="{ rowsPerPage: 20 }"
         @row-click="goToPatient"
       />
     </q-card>
