@@ -308,22 +308,26 @@ def ensure_patient_exists(patient_id):
 
 
 def save_heartbeat_predictions(data, predicted_labels, predictions_proba, model_name):
-    for idx, row in data.iterrows():
-        #patient_id = int(row["record"])
-        patient_id = 1 # For testing purposes, using a fixed patient_id
-        ensure_patient_exists(patient_id)
+    try:
+        for idx, row in data.iterrows():
+          #patient_id = int(row["record"])
+          #patient_id = 1 # For testing purposes, using a fixed patient_id
+          patient_id = row[188]
+          ensure_patient_exists(patient_id)
 
-        ecg_vector = row.drop(labels=["record", "type"], errors="ignore").tolist()
+          ecg_vector = row.drop(labels=["record", "type"], errors="ignore").tolist()
 
-        heartbeat = Heartbeat(
-            patient_id=patient_id,
-            ecg_features=ecg_vector,
-            heartbeat_type=int(row[187]),
-            predicted_type=PREDICTION_LABELS.get(predicted_labels[idx], "Unknown"),
-            prediction_confidence=float(np.max(predictions_proba[idx])),
-            model_name=model_name  
-        )
+          heartbeat = Heartbeat(
+              patient_id=patient_id,
+              ecg_features=ecg_vector,
+              heartbeat_type=int(row[187]),
+              predicted_type=PREDICTION_LABELS.get(predicted_labels[idx], "Unknown"),
+              prediction_confidence=float(np.max(predictions_proba[idx])),
+              model_name=model_name  
+          )
         db.session.add(heartbeat)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 def save_model_performance(model_name, accuracy, cm):
     performance = ModelPerformance(
