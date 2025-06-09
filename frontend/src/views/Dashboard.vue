@@ -111,6 +111,8 @@
 import { ref, onMounted, getCurrentInstance, computed } from 'vue'
 import { usePatientStore } from '@/stores/patients'
 import { useRouter } from 'vue-router'
+import { format } from 'date-fns'
+
 
 const { proxy } = getCurrentInstance()
 const router = useRouter()
@@ -143,36 +145,48 @@ const columns = [
   { name: 'last_prediction', label: 'Prediction', field: 'last_prediction', align: 'left' }
 ]
 
-const cards = computed(() => [
-  {
-    label: 'New Patients',
-    value: '125', // Replace with real value if needed
-    icon: 'person_add',
-    color: 'purple',
-    progress: 0.5
-  },
-  {
-    label: 'Total Patients',
-    value: totalPatients.value,
-    icon: 'groups',
-    color: 'blue',
-    progress: 1
-  },
-  {
-    label: 'Classified Arrhythmias',
-    value: classified.value,
-    icon: 'favorite',
-    color: 'green',
-    progress: 0.4
-  },
-  {
-    label: 'Total Arrhythmias',
-    value: totalArrhythmias.value,
-    icon: 'monitor_heart',
-    color: 'orange',
-    progress: 0.7
-  }
-])
+const todayStr = format(new Date(), 'yyyy-MM-dd')
+
+const cards = computed(() => {
+  const newPatients = patients.value.filter(p =>
+    p.created_at?.startsWith(todayStr)
+  ).length
+
+  const classified = patients.value.filter(p => p.last_prediction).length
+  const arrhythmias = patients.value.filter(p => p.last_prediction === 'Arrhythmic').length
+
+  return [
+    {
+      label: 'New Patients',
+      value: newPatients,
+      icon: 'person_add',
+      color: 'purple',
+      progress: newPatients / (patients.value.length || 1)
+    },
+    {
+      label: 'Total Patients',
+      value: patients.value.length,
+      icon: 'groups',
+      color: 'blue',
+      progress: 1
+    },
+    {
+      label: 'Classified Patients',
+      value: classified,
+      icon: 'favorite',
+      color: 'green',
+      progress: classified / (patients.value.length || 1)
+    },
+    {
+      label: 'Total Arrhythmias',
+      value: arrhythmias,
+      icon: 'monitor_heart',
+      color: 'orange',
+      progress: arrhythmias / (patients.value.length || 1)
+    }
+  ]
+})
+
 
 
 const fetchPatients = async () => {
