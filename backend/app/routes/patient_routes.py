@@ -102,7 +102,7 @@ def list_patients():
                 'birth_date': p.birth_date.strftime('%Y-%m-%d') if p.birth_date else None,
                 'contact_info': p.contact_info,
                 'created_at': p.created_at.isoformat(),
-                'most_common_prediction': most_common_prediction
+                'last_prediction': most_common_prediction
             })
 
         return jsonify(result), 200
