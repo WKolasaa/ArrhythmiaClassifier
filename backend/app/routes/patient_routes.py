@@ -216,7 +216,7 @@ def get_patient_heartbeats(patient_id):
     """
     patient = Patient.query.get(patient_id)
     if not patient:
-        return jsonify({'error': 'Patient not found'}), 404
+      return jsonify({'error': 'Patient not found'}), 404
 
     heartbeats = Heartbeat.query.filter_by(patient_id=patient_id).all()
 
@@ -225,28 +225,14 @@ def get_patient_heartbeats(patient_id):
         data.append({
             'id': hb.id,
             'timestamp': hb.timestamp.isoformat(),
-            'pre_RR': hb.pre_RR,
-            'post_RR': hb.post_RR,
-            'p_peak': hb.p_peak,
-            't_peak': hb.t_peak,
-            'r_peak': hb.r_peak,
-            's_peak': hb.s_peak,
-            'q_peak': hb.q_peak,
-            'qrs_interval': hb.qrs_interval,
-            'pq_interval': hb.pq_interval,
-            'qt_interval': hb.qt_interval,
-            'st_interval': hb.st_interval,
-            'qrs_morph0': hb.qrs_morph0,
-            'qrs_morph1': hb.qrs_morph1,
-            'qrs_morph2': hb.qrs_morph2,
-            'qrs_morph3': hb.qrs_morph3,
-            'qrs_morph4': hb.qrs_morph4,
+            'ecg_features': hb.ecg_features,  # Full ECG array
             'heartbeat_type': hb.heartbeat_type,
             'predicted_type': hb.predicted_type,
             'prediction_confidence': hb.prediction_confidence
         })
 
     return jsonify(data), 200
+
 @bp.route('/<int:patient_id>/heartbeats/<int:heartbeat_id>', methods=['GET'])
 def get_heartbeat_by_id(patient_id, heartbeat_id):
   """
@@ -272,37 +258,23 @@ def get_heartbeat_by_id(patient_id, heartbeat_id):
 
   patient = Patient.query.get(patient_id)
   if not patient:
-      return jsonify({'error': 'Patient not found'}), 404,
+    return jsonify({'error': 'Patient not found'}), 404
 
   heartbeat = Heartbeat.query.filter_by(id=heartbeat_id, patient_id=patient_id).first()
   if not heartbeat:
-      return jsonify({'error': 'Heartbeat not found for this patient'}), 404
+    return jsonify({'error': 'Heartbeat not found for this patient'}), 404
 
   data = {
-          'id': heartbeat.id,
-          'timestamp': heartbeat.timestamp.isoformat(),
-          'pre_RR': heartbeat.pre_RR,
-          'post_RR': heartbeat.post_RR,
-          'p_peak': heartbeat.p_peak,
-          't_peak': heartbeat.t_peak,
-          'r_peak': heartbeat.r_peak,
-          's_peak': heartbeat.s_peak,
-          'q_peak': heartbeat.q_peak,
-          'qrs_interval': heartbeat.qrs_interval,
-          'pq_interval': heartbeat.pq_interval,
-          'qt_interval': heartbeat.qt_interval,
-          'st_interval': heartbeat.st_interval,
-          'qrs_morph0': heartbeat.qrs_morph0,
-          'qrs_morph1': heartbeat.qrs_morph1,
-          'qrs_morph2': heartbeat.qrs_morph2,
-          'qrs_morph3': heartbeat.qrs_morph3,
-          'qrs_morph4': heartbeat.qrs_morph4,
-          'heartbeat_type': heartbeat.heartbeat_type,
-          'predicted_type': heartbeat.predicted_type,
-          'prediction_confidence': heartbeat.prediction_confidence
+    'id': heartbeat.id,
+    'timestamp': heartbeat.timestamp.isoformat(),
+    'ecg_features': heartbeat.ecg_features,  # entire ECG voltage array
+    'heartbeat_type': heartbeat.heartbeat_type,
+    'predicted_type': heartbeat.predicted_type,
+    'prediction_confidence': heartbeat.prediction_confidence
   }
 
   return jsonify(data), 200
+
 @bp.route('/stats', methods=['GET'])
 def get_dashboard_stats():
     """

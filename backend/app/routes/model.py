@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import tensorflow as tf
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from werkzeug.utils import secure_filename
 
 from app.extensions import db
@@ -17,14 +17,19 @@ from app.models.heartbeat import Heartbeat
 from app.models.modelperformance import ModelPerformance
 from app.models.patient import Patient
 
+import threading
+from app.ml.retrain import run_retraining
+
 bp = Blueprint("predict", __name__, url_prefix="/model")
+bpM = Blueprint('ml', __name__, url_prefix='/model')
+
 MODEL_FOLDER = os.path.join(os.getcwd(), "model")  # Should point to backend/model/
 PREDICTION_LABELS = {
     0: "Normal",
-    1: "Supraventricular",
-    2: "Premature",
-    3: "Arrhythmic",
-    4: "Unknown"
+    1: "Artial Premature",
+    2: "Premature ventricular contraction",
+    3: "Fusion of ventricular and normal",
+    4: "Fusion of paced and normal"
 }
 
 
@@ -286,18 +291,15 @@ def load_model_and_data(model_path, csv_path):
 
 
 def prepare_features(data):
-    base_features = [
-        "pre-RR", "post-RR", "pPeak", "tPeak", "rPeak", "sPeak", "qPeak",
-        "qrs_interval", "pq_interval", "qt_interval", "st_interval",
-        "qrs_morph0", "qrs_morph1", "qrs_morph2", "qrs_morph3", "qrs_morph4"
-    ]
-    feature_cols = [f"{i}_{feat}" for i in range(2) for feat in base_features]
-    required_columns = ["record"] + feature_cols
-    missing = [col for col in required_columns if col not in data.columns]
-    if missing:
-        raise Exception(f"Missing required columns in CSV: {', '.join(missing)}")
-    X = data[feature_cols].values
-    y_true = data["type"].tolist() if "type" in data.columns else None
+    # Extract features (first 188 columns)
+    X = data.iloc[:, :187].values
+
+    # Use the last column as ground truth if available
+    if data.shape[1] > 187:
+        y_true = data.iloc[:, 187].tolist()
+    else:
+        y_true = None
+
     return X, y_true
 
 
@@ -311,35 +313,27 @@ def ensure_patient_exists(patient_id):
 
 
 def save_heartbeat_predictions(data, predicted_labels, predictions_proba, model_name):
-    for idx, row in data.iterrows():
-        patient_id = int(row["record"])
-        ensure_patient_exists(patient_id)
+    try:
+        for idx, row in data.iterrows():
+            signal = row[:187].tolist()                      
+            label = str(int(row[187]))                       
+            patient_id = int(row[188])                       
 
-        heartbeat = Heartbeat(
-            patient_id=patient_id,
-            pre_RR=row["0_pre-RR"],
-            post_RR=row["0_post-RR"],
-            p_peak=row["0_pPeak"],
-            t_peak=row["0_tPeak"],
-            r_peak=row["0_rPeak"],
-            s_peak=row["0_sPeak"],
-            q_peak=row["0_qPeak"],
-            qrs_interval=row["0_qrs_interval"],
-            pq_interval=row["0_pq_interval"],
-            qt_interval=row["0_qt_interval"],
-            st_interval=row["0_st_interval"],
-            qrs_morph0=row["0_qrs_morph0"],
-            qrs_morph1=row["0_qrs_morph1"],
-            qrs_morph2=row["0_qrs_morph2"],
-            qrs_morph3=row["0_qrs_morph3"],
-            qrs_morph4=row["0_qrs_morph4"],
-            heartbeat_type=row.get("type"),
-            predicted_type=PREDICTION_LABELS.get(predicted_labels[idx], "Unknown"),
-            prediction_confidence=float(np.max(predictions_proba[idx])),
-            model_name=model_name  
-        )
-        db.session.add(heartbeat)
+            ensure_patient_exists(patient_id)
 
+            heartbeat = Heartbeat(
+                patient_id=patient_id,
+                ecg_features=signal,
+                heartbeat_type=label,
+                predicted_type=PREDICTION_LABELS.get(predicted_labels[idx], "Unknown"),
+                prediction_confidence=float(np.max(predictions_proba[idx])),
+                model_name=model_name
+            )
+            db.session.add(heartbeat)  
+        db.session.commit()            
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
 
 
 def save_model_performance(model_name, accuracy, cm):
@@ -349,3 +343,77 @@ def save_model_performance(model_name, accuracy, cm):
         confusion_matrix=cm
     )
     db.session.add(performance)
+
+
+@bpM.route('/retrain', methods=['POST'])
+def retrain():
+    """
+      Retrain the ECG CNN-LSTM model using labeled heartbeats
+      ---
+      tags:
+        - Model
+      parameters:
+        - name: Authorization
+          in: header
+          type: string
+          required: true
+          description: Bearer JWT token (e.g., "Bearer <your_token>")
+      responses:
+        200:
+          description: Retraining completed successfully
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: Retraining completed
+              model_version:
+                type: string
+                example: "1.4"
+        400:
+          description: Token is missing user ID
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: Token missing user_id
+        401:
+          description: Invalid or missing JWT token
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: Invalid or missing token
+        500:
+          description: Error during retraining (e.g., no valid heartbeats)
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: No valid heartbeats to train on.
+    """
+
+    token = request.headers.get('Authorization', '').replace('Bearer ', '')
+    payload = verify_token(token)
+    if not payload:
+        return jsonify({"error": "Invalid or missing token"}), 401
+
+    user_id = payload.get('user_id')
+    if user_id is None:
+        return jsonify({"error": "Token missing user_id"}), 400
+
+    app = current_app._get_current_object()
+
+    try:
+        version = run_retraining(app, user_id)
+        return jsonify({
+            "message": "Retraining completed",
+            "model_version": version
+        }), 200
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
