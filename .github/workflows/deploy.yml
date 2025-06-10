@@ -1,4 +1,4 @@
-name: Deploy Docker Compose App
+name: Deploy to Azure VM
 
 on:
   push:
@@ -9,14 +9,19 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout source
-      uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v3
 
-    - name: Azure Login
-      uses: azure/login@v2
+    - name: Set up SSH
+      uses: webfactory/ssh-agent@v0.8.0
       with:
-        creds: ${{ secrets.AZURE_CREDENTIALS }}
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-    - name: Deploy docker-compose to Azure Web App
+    - name: Deploy with Docker Compose
       run: |
-        az webapp config container set --name arrhythmia-classifier-app --resource-group AIProject --multicontainer-config-type compose --multicontainer-config-file docker-compose.yml
+        ssh -o StrictHostKeyChecking=no azureuser@${{ secrets.AZURE_VM_IP }} << 'EOF'
+          cd ~/ArrhythmiaClassifier
+          git pull origin main
+          docker-compose down
+          docker-compose up -d --build
+        EOF
