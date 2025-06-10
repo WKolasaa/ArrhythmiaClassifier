@@ -8,6 +8,7 @@ import traceback
 import io
 import csv
 from werkzeug.utils import secure_filename
+from collections import Counter
 
 
 bp = Blueprint('patients', __name__, url_prefix='/patients')
@@ -78,18 +79,21 @@ def create_patient():
         print(f"Patient creation error: {e}")
         return jsonify({"error": "Internal server error"}), 500
 
+
+
 @bp.route('', methods=['GET'])
 def list_patients():
     try:
         patients = Patient.query.all()
         result = []
         for p in patients:
-            latest_heartbeat = Heartbeat.query \
-                .filter_by(patient_id=p.id) \
-                .order_by(desc(Heartbeat.timestamp)) \
-                .first()
+            heartbeats = Heartbeat.query.filter_by(patient_id=p.id).all()
+            prediction_types = [hb.predicted_type for hb in heartbeats if hb.predicted_type]
 
-            last_prediction = latest_heartbeat.predicted_type if latest_heartbeat else None
+            if prediction_types:
+                most_common_prediction = Counter(prediction_types).most_common(1)[0][0]
+            else:
+                most_common_prediction = None
 
             result.append({
                 'id': p.id,
@@ -98,7 +102,7 @@ def list_patients():
                 'birth_date': p.birth_date.strftime('%Y-%m-%d') if p.birth_date else None,
                 'contact_info': p.contact_info,
                 'created_at': p.created_at.isoformat(),
-                'last_prediction': last_prediction
+                'last_prediction': most_common_prediction
             })
 
         return jsonify(result), 200
@@ -106,6 +110,7 @@ def list_patients():
     except Exception as e:
         print(f"Error listing patients: {e}")
         return jsonify({"error": "Internal server error"}), 500
+
 
 
 

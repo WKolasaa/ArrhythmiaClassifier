@@ -1,27 +1,32 @@
 <template>
-  <q-page class="flex flex-center column q-pa-xl bg-grey-1 text-dark">
-    <q-card flat bordered class="q-pa-xl" style="max-width: 600px; width: 100%">
-      <q-card-section class="text-center">
-        <q-icon name="favorite" size="64px" color="primary" class="q-mb-md" />
-        <div class="text-h5 text-weight-bold">
+  <q-page class="q-pa-md flex flex-center">
+    <div class="row items-center justify-around full-width q-col-gutter-xl">
+      <!-- Jet Image -->
+      <div class="col-12 col-md-8">
+        <q-img
+          src="/images/jet_ekg.jpg"
+          alt="Jet fighter"
+          style="border-radius: 12px;"
+        />
+      </div>
+
+      <!-- Text + Buttons -->
+      <div class="col-12 col-md-4 flex column justify-center" style="min-height: 400px;">
+        <div class="text-h4 text-bold text-primary">
           Fighter Jet EKG Arrhythmia Classifier
         </div>
-        <div class="text-subtitle2 q-mt-sm">
-          A precision tool for analyzing pilot EKG data to detect arrhythmias efficiently.
+        <div class="text-body1 q-mt-sm">
+          A high-precision diagnostic interface for hyperspace pilots. Use real EKG data to detect arrhythmias and improve mission safety.
         </div>
-      </q-card-section>
+        <q-banner class="bg-blue-1 text-blue-10 q-pa-sm q-mt-sm" dense>
+          Empowering doctors with real-time analysis tools for cardiac health optimization.
+        </q-banner>
 
-      <q-separator class="q-my-lg" />
-
-      <q-card-section class="text-center">
-        <div class="text-body1 q-mb-sm">
-          Access powerful insights into cardiac rhythms and streamline your diagnosis workflow.
+        <div class="row q-col-gutter-sm q-mt-md">
+          <q-btn to="/login" label="Login" color="primary" unelevated  size="lg"/>
+          <q-btn to="/register" label="Register" color="primary" flat size="lg"/>
         </div>
-        <div class="q-gutter-md q-mt-md row justify-center">
-          <q-btn color="primary" to="/login" label="Login" unelevated />
-          <q-btn color="secondary" to="/register" label="Register" outline />
-        </div>
-      </q-card-section>
-    </q-card>
+      </div>
+    </div>
   </q-page>
 </template>

@@ -1,32 +1,59 @@
 <template>
   <q-page padding>
+    <q-btn
+      label="Dashboard"
+      icon="arrow_back"
+      color="primary"
+      flat
+      class="q-mb-lg"
+      @click="$router.push('/dashboard')"
+    />
     <!-- Summary Cards -->
-    <div class="row q-col-gutter-md q-mb-md">
-      <q-card class="col bg-white text-primary" flat bordered>
-        <q-card-section>
-          <div class="text-h6">Total Heartbeats</div>
-          <div class="text-h4">{{ statusData?.total_heartbeats ?? "--" }}</div>
-        </q-card-section>
-      </q-card>
-
-      <q-card class="col bg-white text-primary" flat bordered>
-        <q-card-section>
-          <div class="text-h6">Abnormal Heartbeats</div>
-          <div class="text-h4">
-            {{ statusData?.abnormal_heartbeats ?? "--" }}
+    <div class="row q-gutter-md q-mb-xl">
+      <q-card flat bordered class="summary-card col-12 col-md-3">
+        <q-card-section class="q-pa-sm">
+          <div class="row items-center justify-between">
+            <div class="column">
+              <div class="text-subtitle2 text-grey-7">Total Heartbeats</div>
+              <div class="text-h6 text-bold text-primary">
+                {{ statusData?.total_heartbeats ?? "--" }}
+              </div>
+            </div>
+            <q-icon name="monitor_heart" color="blue" size="32px" />
           </div>
         </q-card-section>
       </q-card>
 
-      <q-card class="col bg-white text-primary" flat bordered>
-        <q-card-section>
-          <div class="text-h6">Status</div>
-          <div class="text-h4 text-uppercase">
-            {{ statusData?.status ?? "--" }}
+      <q-card flat bordered class="summary-card col-12 col-md-3">
+        <q-card-section class="q-pa-sm">
+          <div class="row items-center justify-between">
+            <div class="column">
+              <div class="text-subtitle2 text-grey-7">Abnormal Heartbeats</div>
+              <div class="text-h6 text-bold text-primary">
+                {{ statusData?.abnormal_heartbeats ?? "--" }}
+              </div>
+            </div>
+            <q-icon name="warning" color="orange" size="32px" />
+          </div>
+        </q-card-section>
+      </q-card>
+
+      <q-card flat bordered class="summary-card col-12 col-md-3">
+        <q-card-section class="q-pa-sm">
+          <div class="row items-center justify-between">
+            <div class="column">
+              <div class="text-subtitle2 text-grey-7">Status</div>
+              <div class="text-h6 text-bold text-uppercase text-primary">
+                {{ statusData?.status ?? "--" }}
+              </div>
+            </div>
+            <q-icon :name="statusData?.status === 'ARRHYTHMIC' ? 'favorite' : 'check_circle'"
+              :color="statusData?.status === 'ARRHYTHMIC' ? 'red' : 'green'" size="32px" />
           </div>
         </q-card-section>
       </q-card>
     </div>
+
 
     <!-- Patient Details Table -->
     <q-card class="q-pa-sm q-mb-md">
@@ -59,22 +86,10 @@
     <q-card>
       <q-card-section>
         <div class="text-h6">Heartbeats</div>
-        <q-table
-          :rows="heartbeats"
-          :columns="columns"
-          row-key="id"
-          flat
-          bordered
-          class="table"
-        >
+        <q-table :rows="heartbeats" :columns="columns" row-key="id" flat bordered class="table">
           <template v-slot:body-cell-actions="props">
             <q-td align="center">
-              <q-btn
-                color="primary"
-                label="See ECG"
-                size="md"
-                @click="goToEcg(props.row.id)"
-              />
+              <q-btn color="primary" label="See ECG" size="md" @click="goToEcg(props.row.id)" />
             </q-td>
           </template>
         </q-table>
@@ -133,5 +148,21 @@ function goToEcg(heartbeatId) {
 .table tbody td {
   font-size: 16px;
   text-align: center;
+}
+
+.summary-cards-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 0 16px;
+  justify-content: space-between;
+}
+
+.summary-card {
+  flex: 1 1 260px;
+  max-width: 400px;
+  min-height: 110px;
+  border-radius: 12px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
 }
 </style>
