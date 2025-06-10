@@ -1,12 +1,10 @@
-# Build stage
-FROM node:20 AS build
-WORKDIR /app
-COPY frontend/ .
-RUN npm install
-RUN npm run build
+FROM node:20
 
-# Serve stage
-FROM nginx:alpine
-COPY --from=build /app/dist /usr/share/nginx/html
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+WORKDIR /app
+
+COPY . .
+
+EXPOSE 5173
+
+# Remove existing node_modules and install fresh at container startup
+CMD ["sh", "-c", "rm -rf node_modules package-lock.json && npm install --legacy-peer-deps && npm run dev -- --host"]

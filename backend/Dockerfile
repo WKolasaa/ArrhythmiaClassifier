@@ -2,8 +2,7 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-COPY ./backend /app
-COPY ./model /app/model
+COPY . /app
 
 ENV PYTHONPATH=/app
 
@@ -12,4 +11,4 @@ RUN pip install -r requirements.txt
 
 EXPOSE 5000
 
-CMD ["gunicorn", "wsgi:app", "--bind", "0.0.0.0:5000"]
+CMD ["flask", "run", "--host=0.0.0.0", "--port=5000"]
