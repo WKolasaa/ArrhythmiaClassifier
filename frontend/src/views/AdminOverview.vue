@@ -1,9 +1,17 @@
 <template>
   <q-page padding class="bg-grey-2">
     <q-card flat bordered class="q-pa-md">
-      <!-- Header -->
-      <q-card-section class="text-h6 text-primary q-pb-md">
-        Model Performance Records
+      <!-- Header with Retrain button -->
+      <q-card-section class="row justify-between items-center q-pb-md">
+        <div class="text-h6 text-primary">Model Performance Records</div>
+        <q-btn
+          dense
+          flat
+          icon="autorenew"
+          label="Retrain"
+          :loading="retraining"
+          @click="retrainModel"
+        />
       </q-card-section>
 
       <!-- Table Section -->
@@ -19,7 +27,11 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="model in performanceList" :key="model.id" class="hoverable-row">
+              <tr
+                v-for="model in performanceList"
+                :key="model.id"
+                class="hoverable-row"
+              >
                 <td class="text-left text-body1 q-px-sm q-py-xs">
                   {{ model.model_name }}
                 </td>
@@ -31,7 +43,12 @@
                 </td>
                 <td class="text-center q-px-sm q-py-xs">
                   <div class="nested-matrix-container">
-                    <q-markup-table dense bordered flat class="bg-grey-1 nested-matrix-table">
+                    <q-markup-table
+                      dense
+                      bordered
+                      flat
+                      class="bg-grey-1 nested-matrix-table"
+                    >
                       <thead>
                         <tr>
                           <th></th>
@@ -78,6 +95,7 @@
 import { ref, onMounted } from 'vue'
 
 const performanceList = ref([])
+const retraining = ref(false)
 
 const classLabels = [
   'Normal',
@@ -110,7 +128,6 @@ const fetchModelPerformances = async () => {
         return await detailRes.json()
       })
     )
-
     performanceList.value = allDetails
   } catch (err) {
     console.error('Error loading model performance records:', err.message)
@@ -130,72 +147,73 @@ const formatTimestamp = (ts) => {
   })
 }
 
+const retrainModel = async () => {
+  retraining.value = true
+  try {
+    const res = await fetch('http://localhost:5001/model/retrain', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer ' + localStorage.getItem('token')
+      }
+    })
+    const result = await res.json()
+    if (!res.ok) {
+      console.error('Retrain failed:', result.error || result)
+    } else {
+      console.log('Retrain started:', result)
+      await fetchModelPerformances()
+    }
+  } catch (err) {
+    console.error('Error during retrain request:', err.message)
+  } finally {
+    retraining.value = false
+  }
+}
+
 onMounted(fetchModelPerformances)
 </script>
 
 <style scoped>
-/* Make the page background a very light grey */
 .bg-grey-2 {
   background-color: #f5f5f5;
 }
-
-/* Header styling */
 .text-primary {
   color: #1976d2;
 }
-
-/* Allow horizontal scrolling on narrower screens */
 .scrollable-table-container {
   overflow-x: auto;
 }
-
-/* Striping for the outer table rows */
 .striped-table tbody tr:nth-child(even) {
   background-color: #fafafa;
 }
-
-/* Hover effect on outer table rows */
 .hoverable-row:hover {
   background-color: #e3f2fd;
 }
-
-/* Confusion matrix container: ensure it doesn’t overflow */
 .nested-matrix-container {
   overflow-x: auto;
   margin: 0 auto;
 }
-
-/* Collapse nested table borders slightly */
 .nested-matrix-table th,
 .nested-matrix-table td {
   padding: 4px 6px;
   border-width: 1px !important;
   font-size: 0.75rem;
 }
-
-/* Center the nested table horizontally */
 .nested-matrix-container .nested-matrix-table {
   margin: 0 auto;
 }
-
-/* Highlight true-positive diagonal cells in the confusion matrix */
 .bg-green-2 {
   background-color: #e8f5e9 !important;
 }
-
-/* Ensure the main card has a subtle border and background */
 q-card {
   background-color: #ffffff;
   border-radius: 8px;
 }
-
-/* Reduce padding on table cells for a tighter look */
 q-markup-table td,
 q-markup-table th {
   padding: 8px 12px;
 }
-
-/* Header row text styling */
 q-markup-table thead th {
   font-weight: 600;
 }
