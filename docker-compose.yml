@@ -17,7 +17,7 @@ services:
       - .env
     depends_on:
       - db
-    command: flask run --host=0.0.0.0 --port=5000 --reload # TODO: REMOVE --reload FOR PRODUCTION!!!
+    command: gunicorn wsgi:app --bind 0.0.0.0:5000
 
   db:
     image: mysql:8.0
