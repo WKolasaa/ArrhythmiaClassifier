@@ -1,5 +1,13 @@
 <template>
   <q-page padding>
+    <q-btn
+      label="Dashboard"
+      icon="arrow_back"
+      color="primary"
+      flat
+      class="q-mb-lg"
+      @click="$router.push('/dashboard')"
+    />
     <!-- Summary Cards -->
     <div class="row q-gutter-md q-mb-xl">
       <q-card flat bordered class="summary-card col-12 col-md-3">

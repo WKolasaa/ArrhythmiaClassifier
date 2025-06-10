@@ -1,5 +1,14 @@
 <template>
   <q-page padding>
+    <q-btn
+      label="Patient View"
+      icon="arrow_back"
+      color="primary"
+      flat
+      class="q-mb-lg"
+      @click="$router.push('/patients/' + patientId)"
+    />
+
     <q-card class="q-pa-md">
       <q-card-section>
         <div class="text-h6">ECG Visualization - Heartbeat #{{ heartbeat?.id }}</div>
@@ -17,7 +26,7 @@
 
 <script setup>
 import { ref, onMounted, computed } from "vue";
-import { useRoute } from 'vue-router';
+import { useRoute} from 'vue-router';
 import Chart from 'chart.js/auto';
 import { usePatientStore } from '@/stores/patients';
 
@@ -27,6 +36,11 @@ const ecgChart = ref(null);
 const heartbeat = ref(null);
 const patientId = route.params.id;
 const heartbeatId = route.params.heartbeatId;
+
+
+
+
+
 
 const confidence = computed(() =>
   heartbeat.value?.prediction_confidence ? `${(heartbeat.value.prediction_confidence * 100).toFixed(1)}%` : '--'
