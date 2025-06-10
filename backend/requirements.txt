@@ -12,3 +12,4 @@ pandas
 tensorflow
 flask-cors
 pandas
+gunicorn

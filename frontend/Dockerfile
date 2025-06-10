@@ -5,5 +5,8 @@ COPY . .
 
 EXPOSE 5173
 
-# Remove existing node_modules and install fresh at container startup
-CMD ["sh", "-c", "rm -rf node_modules package-lock.json && npm install --legacy-peer-deps && npm run dev -- --host"]
+RUN npm install --legacy-peer-deps
+RUN npm run build
+RUN npm install -g serve
+
+CMD ["serve", "-s", "dist", "-l", "5173"]
