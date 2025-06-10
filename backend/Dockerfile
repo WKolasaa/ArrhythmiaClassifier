@@ -2,8 +2,7 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-COPY ./backend /app
-COPY ./model /app/model
+COPY . . 
 
 ENV PYTHONPATH=/app
 

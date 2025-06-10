@@ -1,9 +1,7 @@
 FROM node:20
 
 WORKDIR /app
-COPY ./frontend /app
-
-COPY . .
+COPY . . 
 
 EXPOSE 5173
 
