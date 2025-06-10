@@ -1,12 +1,11 @@
-FROM node:20
-
+# Use node to build, then serve with nginx
+FROM node:20 AS builder
 WORKDIR /app
-COPY . . 
+COPY ./frontend /app
+RUN npm install --legacy-peer-deps && npm run build
 
-EXPOSE 5173
+FROM nginx:alpine
+COPY --from=builder /app/dist /usr/share/nginx/html
 
-RUN npm install --legacy-peer-deps
-RUN npm run build
-RUN npm install -g serve
-
-CMD ["serve", "-s", "dist", "-l", "5173"]
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
