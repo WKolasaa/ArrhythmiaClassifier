@@ -49,7 +49,7 @@ vueMounted(() => {
         <q-toolbar-title>Arrhythmia App</q-toolbar-title>
         <q-space />
 
-        <q-btn v-if="isLoggedIn" flat label="Admin" to="/adminoverview" />
+        <q-btn v-if="isLoggedIn" flat label="Model" to="/adminoverview" />
         <q-btn v-if="isLoggedIn" flat label="Dashboard" to="/dashboard" />
         <q-btn v-if="!isLoggedIn" flat label="Home" to="/" />
         <q-btn v-if="!isLoggedIn" flat label="Login" to="/login" />
