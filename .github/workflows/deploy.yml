@@ -1,0 +1,22 @@
+name: Deploy Docker Compose App
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout source
+      uses: actions/checkout@v4
+
+    - name: Azure Login
+      uses: azure/login@v2
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Deploy docker-compose to Azure Web App
+      run: |
+        az webapp config container set --name arrhythmia-classifier-app --resource-group AIProject --multicontainer-config-type compose --multicontainer-config-file docker-compose.yml
