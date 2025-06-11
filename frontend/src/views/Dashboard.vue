@@ -196,7 +196,7 @@ const fetchPatients = async () => {
 
 const fetchStats = async () => {
   try {
-    const res = await fetch('http://localhost:5001/patients/stats', {
+    const res = await fetch('http://20.82.105.66:5001/patients/stats', {
       headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
     })
     const data = await res.json()
@@ -228,7 +228,7 @@ const submitPatient = async () => {
 
 const fetchModelOptions = async () => {
   try {
-    const res = await fetch('http://localhost:5001/model/models', {
+    const res = await fetch('http://20.82.105.66:5001/model/models', {
       headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
     })
     const data = await res.json()
@@ -255,7 +255,7 @@ const handleFileUpload = async () => {
   proxy?.$q?.loading.show({ message: 'Analyzing...' })
 
   try {
-    const res = await fetch('http://localhost:5001/model/predict', {
+    const res = await fetch('http://20.82.105.66:5001/model/predict', {
       method: 'POST',
       headers: { Authorization: 'Bearer ' + localStorage.getItem('token') },
       body: formData
@@ -292,7 +292,7 @@ const handleBulkPatientUpload = async () => {
   proxy?.$q?.loading.show({ message: 'Uploading bulk patients...' })
 
   try {
-    const res = await fetch('http://localhost:5001/patients/bulk-upload', {
+    const res = await fetch('http://20.82.105.66:5001/patients/bulk-upload', {
       method: 'POST',
       headers: { Authorization: 'Bearer ' + localStorage.getItem('token') },
       body: formData

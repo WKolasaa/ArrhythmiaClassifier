@@ -107,7 +107,7 @@ const classLabels = [
 
 const fetchModelPerformances = async () => {
   try {
-    const res = await fetch('http://localhost:5001/model/model-performance', {
+    const res = await fetch('http://20.82.105.66/:5001/model/model-performance', {
       headers: {
         Authorization: 'Bearer ' + localStorage.getItem('token')
       }
@@ -118,7 +118,7 @@ const fetchModelPerformances = async () => {
     const allDetails = await Promise.all(
       data.accuracies.map(async (entry) => {
         const detailRes = await fetch(
-          `http://localhost:5001/model/model-performance/${entry.id}`,
+          `http://20.82.105.66:5001/model/model-performance/${entry.id}`,
           {
             headers: {
               Authorization: 'Bearer ' + localStorage.getItem('token')
@@ -150,7 +150,7 @@ const formatTimestamp = (ts) => {
 const retrainModel = async () => {
   retraining.value = true
   try {
-    const res = await fetch('http://localhost:5001/model/retrain', {
+    const res = await fetch('http://20.82.105.66:5001/model/retrain', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
