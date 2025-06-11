@@ -18,7 +18,7 @@ def create_app():
 
     db.init_app(app)
 
-    CORS(app, origins=["http://localhost:5173"])
+    CORS(app, origins=["http://20.82.105.66:5173"])
 
     app.register_blueprint(auth.bp)
     app.register_blueprint(patient_routes.bp)
