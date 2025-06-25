@@ -2,10 +2,10 @@
 
 ArrhythmiaClassifier is a full-stack, dockerized application for detecting and classifying cardiac arrhythmias using machine learning. It combines a Python backend for data processing and model inference with a Vue.js frontend for an intuitive user experience.
 ## Authors:
-    - 
-    -
-    -
-    -
+    - Bianca Burlacu
+    - Wojciech Kolasa
+    - Salman Kanj
+    - Codrin Calin
 
     
 ## Features
